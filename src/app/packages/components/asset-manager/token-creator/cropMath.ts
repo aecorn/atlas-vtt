@@ -16,8 +16,9 @@ export const STORED_IMAGE_SCALE = TOKEN_CROP_FRACTION;
  * token's stored image shows as it is. Resetting an edit to any other zoom would count as
  * a new crop and overwrite the token's own image on save.
  */
-export function cropReset(preview: Pick<TokenPreview, 'file' | 'showRing'>): Required<Pick<TokenPreviewPatch, 'imageScale' | 'imagePosition'>> {
-  return { imageScale: preview.file || preview.showRing === false ? 1 : STORED_IMAGE_SCALE, imagePosition: { x: 0, y: 0 } };
+export function cropReset(preview: Pick<TokenPreview, 'file' | 'showRing' | 'imageSource'>): Required<Pick<TokenPreviewPatch, 'imageScale' | 'imagePosition'>> {
+  const ringedScale = preview.imageSource?.ringedDefaultScale ?? (preview.file ? 1 : STORED_IMAGE_SCALE);
+  return { imageScale: preview.showRing === false ? 1 : ringedScale, imagePosition: { x: 0, y: 0 } };
 }
 
 export interface ImageAspect {

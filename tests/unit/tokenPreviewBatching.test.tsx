@@ -2,6 +2,8 @@ import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { ProcessedImage } from '../../src/app/imageProcessing/imageProcessing';
 import { useTokenPreviews } from '../../src/app/packages/components/asset-manager/token-creator/useTokenPreviews';
+import { defaultImageSource } from '../../src/app/services/tokenImageSources';
+import { cropReset } from '../../src/app/packages/components/asset-manager/token-creator/cropMath';
 
 const convert = vi.hoisted(() => vi.fn());
 vi.mock('../../src/app/packages/components/asset-manager/token-creator/tokenImages', () => ({ convertForPreview: convert }));
@@ -68,4 +70,18 @@ it('removes saved previews in one update and cancels their conversions', () => {
   expect(hook.current.previews.map(p => p.id)).toEqual([second!.id]);
   expect(signals.map(signal => signal.aborted)).toEqual([true, false, true]);
   expect(hook.current.optimization).toEqual({ done: 0, total: 1 });
+});
+
+it('reopens the source with both saved ring crops and resets to the original upload baseline', () => {
+  const hook = mount();
+  const imageSource = {
+    ...defaultImageSource('atlas-vtt/assets/token-sources/original.png'),
+    framed: { imageScale: 1.6, imagePosition: { x: 0.1, y: -0.2 } },
+    unframed: { imageScale: 2.3, imagePosition: { x: -0.1, y: 0.2 } },
+  };
+  act(() => hook.current.reset({ id: 'token', name: 'Token', imageUrl: 'app://rendered', sourceImageUrl: 'app://original', imageSource, showRing: false, tags: [] }));
+  expect(hook.current.previews[0]).toMatchObject({ previewUrl: 'app://original', ...imageSource.unframed, alternateCrop: imageSource.framed });
+  act(() => hook.current.update('token', { showRing: true }));
+  expect(hook.current.previews[0]).toMatchObject({ ...imageSource.framed, alternateCrop: imageSource.unframed });
+  expect(cropReset(hook.current.previews[0]!)).toEqual({ imageScale: 1, imagePosition: { x: 0, y: 0 } });
 });

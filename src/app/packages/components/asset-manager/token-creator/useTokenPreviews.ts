@@ -59,16 +59,21 @@ function previewFromFile(file: File): TokenPreview {
   };
 }
 
-function previewFromEdit(token: EditTokenInput): TokenPreview {
+export function previewFromEdit(token: EditTokenInput): TokenPreview {
+  const source = token.imageSource;
   return {
     id: token.id,
     tags: token.tags,
     showRing: token.showRing ?? true,
     ...(token.size !== undefined && { size: token.size }),
     file: null,
-    previewUrl: token.imageUrl,
+    previewUrl: source ? token.sourceImageUrl ?? '' : token.imageUrl,
     name: token.name,
-    ...cropReset({ file: null, showRing: token.showRing ?? true }),
+    ...(source ? {
+      imageSource: source,
+      ...(token.showRing === false ? source.unframed : source.framed),
+      alternateCrop: token.showRing === false ? source.framed : source.unframed,
+    } : cropReset({ file: null, showRing: token.showRing ?? true })),
     isSelected: true,
     isOptimizing: false,
   };

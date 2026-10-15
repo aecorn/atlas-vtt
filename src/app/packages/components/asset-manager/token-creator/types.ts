@@ -51,6 +51,8 @@ export interface TokenPreview {
   name: string;
   imageScale: number;
   imagePosition: ImagePosition;
+  /** Framing in the other ring mode, retained only while the creator is open. */
+  alternateCrop?: { imageScale: number; imagePosition: ImagePosition };
   isSelected: boolean;
   isOptimizing: boolean;
 }

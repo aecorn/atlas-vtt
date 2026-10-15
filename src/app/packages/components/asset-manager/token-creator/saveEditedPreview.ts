@@ -5,7 +5,7 @@ import { writeAssetImage } from '../../../../services/assetImageFiles';
 import { transferAssets } from '../../../../services/assetTransfer/assetTransfer';
 import type { ProcessedImage } from '../../../../imageProcessing/imageProcessing';
 import { prebuildMapImageAt } from '../../../../pixi/mapImage/prebuildMapImage';
-import { STORED_IMAGE_SCALE } from './cropMath';
+import { cropReset } from './cropMath';
 import { prepareSaveImage, type SaveImageContext } from './prepareSaveImages';
 import { overwriteStoredImage, storedImageFile } from './storedTokenImage';
 import type { EditTokenInput, TokenPreview } from './types';
@@ -27,9 +27,10 @@ export interface EditedPreviewSave extends SaveImageContext {
  * the ring was just turned on (the stored image is then the whole artwork).
  */
 function cropsStoredImage(preview: TokenPreview, editToken: EditTokenInput): boolean {
-  if (preview.file || preview.showRing === false) return false;
+  if (preview.file) return false;
   const { imageScale, imagePosition } = preview;
-  return editToken.showRing === false || imageScale !== STORED_IMAGE_SCALE || imagePosition.x !== 0 || imagePosition.y !== 0;
+  const initial = cropReset(preview);
+  return (preview.showRing !== false && editToken.showRing === false) || imageScale !== initial.imageScale || imagePosition.x !== 0 || imagePosition.y !== 0;
 }
 
 /**

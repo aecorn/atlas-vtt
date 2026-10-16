@@ -1,6 +1,22 @@
 import type { TokenImageCrop, TokenImageSource } from '../../../../types/tokenImageSource';
 import { cropReset } from './cropMath';
-import type { TokenPreview } from './types';
+import type { EditTokenInput, TokenPreview } from './types';
+
+/** Restores framing against the source rather than treating the last render as fresh artwork. */
+export function previewFromEdit(token: EditTokenInput): TokenPreview {
+  const source = token.imageSource;
+  return {
+    id: token.id, tags: token.tags, showRing: token.showRing ?? true,
+    ...(token.size !== undefined && { size: token.size }),
+    file: null, previewUrl: source ? token.sourceImageUrl ?? '' : token.imageUrl, name: token.name,
+    ...(source ? {
+      imageSource: source,
+      ...(token.showRing === false ? source.unframed : source.framed),
+      alternateCrop: token.showRing === false ? source.framed : source.unframed,
+    } : cropReset({ file: null, showRing: token.showRing ?? true })),
+    isSelected: true, isOptimizing: false,
+  };
+}
 
 /** Stores both ring modes against the same source, so toggling never crops a previous render. */
 export function imageSourceFor(preview: TokenPreview, path: string): TokenImageSource {

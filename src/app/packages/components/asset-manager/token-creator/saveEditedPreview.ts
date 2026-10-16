@@ -26,8 +26,8 @@ export interface EditedPreviewSave extends SaveImageContext {
 }
 
 /**
- * An edit without an upload crops the token's stored image when the crop was moved or
- * the ring was just turned on (the stored image is then the whole artwork).
+ * A preserved source is rendered again when framing or ring mode changes.
+ * Legacy artwork only needs rendering when its existing fit was adjusted.
  */
 function cropsStoredImage(preview: TokenPreview, editToken: EditTokenInput, source: TokenImageSource | undefined): boolean {
   if (preview.file) return false;

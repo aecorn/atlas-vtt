@@ -12,9 +12,8 @@ export const TOKEN_CROP_FRACTION = 0.8;
 export const STORED_IMAGE_SCALE = TOKEN_CROP_FRACTION;
 
 /**
- * The framing a preview starts at and resets to: a new upload fills the well, an edited
- * token's stored image shows as it is. Resetting an edit to any other zoom would count as
- * a new crop and overwrite the token's own image on save.
+ * The source's default framing: fresh uploads fill the well, while legacy artwork
+ * fits the crop circle. A preserved source keeps that baseline across later edits.
  */
 export function cropReset(preview: Pick<TokenPreview, 'file' | 'showRing' | 'imageSource'>): Required<Pick<TokenPreviewPatch, 'imageScale' | 'imagePosition'>> {
   const ringedScale = preview.imageSource?.ringedDefaultScale ?? (preview.file ? 1 : STORED_IMAGE_SCALE);

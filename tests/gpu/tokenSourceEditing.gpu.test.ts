@@ -1,11 +1,15 @@
-import { afterAll, expect, it } from 'vitest';
+import { afterAll, expect, it, vi } from 'vitest';
 import { TFile } from 'obsidian';
 import { disposeImageProcessing } from '../../src/app/imageProcessing/imageProcessing';
 import { AssetService, type TokenAsset } from '../../src/app/services/AssetService';
 import { saveTokenPreviews } from '../../src/app/packages/components/asset-manager/token-creator/saveTokenPreviews';
-import { previewFromEdit } from '../../src/app/packages/components/asset-manager/token-creator/useTokenPreviews';
+import { previewFromEdit } from '../../src/app/packages/components/asset-manager/token-creator/tokenFraming';
 import type { TokenPreview } from '../../src/app/packages/components/asset-manager/token-creator/types';
 import { createInMemoryApp, interceptWrites } from '../mocks/inMemoryVault';
+
+// The desktop host supplies Node's emitter; map prebuilding is unrelated to token edits.
+vi.mock('events', async () => import('eventemitter3'));
+vi.mock('../../src/app/pixi/mapImage/prebuildMapImage', () => ({ prebuildMapImageAt: vi.fn() }));
 
 /** Red detail inside the default crop but outside a 2× crop; blue detail in the centre. */
 async function originalArt(): Promise<File> {

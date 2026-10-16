@@ -1,10 +1,11 @@
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { renderEntries, type ContextMenuEntry } from '../components/context-menu/AtlasContextMenu';
 import { useAtlasStore } from '../ViewStoreContext';
 import { LabelTooltip } from '../../packages/components/primitives/tooltip';
 import { t } from '../../i18n';
+import { observeResize } from '../../utils/observeResize';
 
 // Re-export the entry type so consumers only import from this file
 export type { ContextMenuEntry } from '../components/context-menu/AtlasContextMenu';
@@ -80,10 +81,11 @@ interface MenuState {
 
 /** Focuses `element` where the menu left focus nowhere (on the body): a choice that moved focus keeps it there. */
 function returnFocusTo(element: HTMLElement | null, event: Event): void {
-  if (!element) return;
+  // The virtual trigger is only a point; restore keyboard focus explicitly without scrolling.
   event.preventDefault();
+  if (!element) return;
   const active = element.ownerDocument.activeElement;
-  if (element.isConnected && (!active || active === element.ownerDocument.body)) element.focus();
+  if (element.isConnected && (!active || active === element.ownerDocument.body)) element.focus({ preventScroll: true });
 }
 
 interface ContextMenuProviderProps {
@@ -141,6 +143,23 @@ export const ContextMenuProvider: React.FC<ContextMenuProviderProps> = ({ childr
       controllers.splice(controllers.indexOf(controller), 1);
     };
   }, [open, close, local]);
+
+  useLayoutEffect(() => {
+    const win = body?.ownerDocument.defaultView;
+    if (!menuState || !win) return undefined;
+    win.addEventListener('resize', close);
+    const boundary = menuState.collisionBoundary;
+    const initial = boundary?.getBoundingClientRect();
+    const stopObserving = boundary && initial ? observeResize([boundary], () => {
+      const { width, height } = boundary.getBoundingClientRect();
+      // ResizeObserver also reports the initial size; opening alone must not dismiss the menu.
+      if (width !== initial.width || height !== initial.height) close();
+    }) : () => undefined;
+    return () => {
+      win.removeEventListener('resize', close);
+      stopObserving();
+    };
+  }, [body, menuState, close]);
 
   const pos = menuState?.position ?? { x: 0, y: 0 };
 

@@ -128,3 +128,31 @@ it('uses the clicked map pane even when a different pane registered the newest p
   expect(menus()).toHaveLength(1);
   inside(menus()[0]!, 300);
 });
+
+it.each([true, false])('dismisses the menu on window resize without scrolling the map (pane: %s)', async (leaf) => {
+  const menu = await open(items(12), 440, 500, leaf);
+  const previous = centreOf(menu);
+  await page.viewport(800, 300);
+  await expect.poll(() => menus().length).toBe(0);
+  await mouse.hover(previous.x, Math.min(previous.y, 270));
+  await frames();
+  expect(menus()).toHaveLength(0);
+  expect(window.scrollY).toBe(0);
+  expect(document.querySelector('.workspace-leaf')?.scrollTop ?? 0).toBe(0);
+});
+
+it('dismisses the menu and its submenu when the map pane is resized', async () => {
+  const menu = await open([{ type: 'submenu', label: 'Conditions', children: items(40) }, ...items(4)], 300, 350);
+  const point = centreOf(menu.querySelector<HTMLElement>('[aria-haspopup="menu"]')!);
+  await mouse.hover(point.x, point.y);
+  await expect.poll(() => menus().length).toBe(2);
+  const leaf = document.querySelector<HTMLElement>('.workspace-leaf')!;
+  leaf.style.height = '180px';
+  await expect.poll(() => menus().length).toBe(0);
+  await mouse.hover(point.x, 200);
+  await frames();
+  expect(menus()).toHaveLength(0);
+  expect(window.innerHeight).toBe(600);
+  expect(window.scrollY).toBe(0);
+  expect(leaf.scrollTop).toBe(0);
+});

@@ -75,6 +75,7 @@ interface MenuState {
   entries: ContextMenuEntry[];
   position: { x: number; y: number };
   returnFocus: HTMLElement | null;
+  collisionBoundary: Element | null;
 }
 
 /** Focuses `element` where the menu left focus nowhere (on the body): a choice that moved focus keeps it there. */
@@ -100,7 +101,11 @@ export const ContextMenuProvider: React.FC<ContextMenuProviderProps> = ({ childr
   const [menuState, setMenuState] = useState<MenuState | null>(null);
   // The body of the document the provider renders in: a map in a popout opens its menus there.
   const [body, setBody] = useState<HTMLElement | null>(null);
-  const anchor = useCallback((node: HTMLSpanElement | null): void => setBody(node?.ownerDocument.body ?? null), []);
+  const anchorElement = useRef<HTMLSpanElement | null>(null);
+  const anchor = useCallback((node: HTMLSpanElement | null): void => {
+    anchorElement.current = node;
+    setBody(node?.ownerDocument.body ?? null);
+  }, []);
   const bodyRef = useRef<HTMLElement | null>(null);
   bodyRef.current = body;
 
@@ -120,7 +125,12 @@ export const ContextMenuProvider: React.FC<ContextMenuProviderProps> = ({ childr
   const open = useCallback((entries: ContextMenuEntry[], position: { x: number; y: number }, options?: ContextMenuOptions): void => {
     told();
     closing.current = options?.onClose;
-    setMenuState({ entries, position, returnFocus: options?.returnFocus ?? null });
+    const doc = bodyRef.current?.ownerDocument;
+    // Global callers may be served by a provider in another leaf: use the clicked view.
+    const collisionBoundary = options?.returnFocus?.closest('.workspace-leaf')
+      ?? doc?.elementFromPoint?.(position.x, position.y)?.closest('.workspace-leaf')
+      ?? anchorElement.current?.closest('.workspace-leaf') ?? null;
+    setMenuState({ entries, position, returnFocus: options?.returnFocus ?? null, collisionBoundary });
   }, [told]);
 
   useEffect(() => {
@@ -166,11 +176,12 @@ export const ContextMenuProvider: React.FC<ContextMenuProviderProps> = ({ childr
                 align="start"
                 sideOffset={4}
                 avoidCollisions
+                collisionBoundary={menuState.collisionBoundary ?? []}
                 collisionPadding={8}
                 onContextMenu={(e) => e.preventDefault()}
                 onCloseAutoFocus={(e) => returnFocusTo(menuState.returnFocus, e)}
               >
-                {renderEntries(menuState.entries, close)}
+                {renderEntries(menuState.entries, close, { collisionBoundary: menuState.collisionBoundary, container: body })}
               </DropdownMenu.Content>
             </DropdownMenu.Portal>
           )}

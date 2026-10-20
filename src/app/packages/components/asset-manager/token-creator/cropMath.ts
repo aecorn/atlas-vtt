@@ -12,12 +12,11 @@ export const TOKEN_CROP_FRACTION = 0.8;
 export const STORED_IMAGE_SCALE = TOKEN_CROP_FRACTION;
 
 /**
- * The source's default framing: fresh uploads fill the well, while legacy artwork
- * fits the crop circle. A preserved source keeps that baseline across later edits.
+ * Fresh uploads fill the well; a stored ringed image fits the crop circle.
+ * Ringless images fit the whole well at their natural aspect ratio.
  */
-export function cropReset(preview: Pick<TokenPreview, 'file' | 'showRing' | 'imageSource'>): Required<Pick<TokenPreviewPatch, 'imageScale' | 'imagePosition'>> {
-  const ringedScale = preview.imageSource?.ringedDefaultScale ?? (preview.file ? 1 : STORED_IMAGE_SCALE);
-  return { imageScale: preview.showRing === false ? 1 : ringedScale, imagePosition: { x: 0, y: 0 } };
+export function cropReset(preview: Pick<TokenPreview, 'file' | 'showRing'>): Required<Pick<TokenPreviewPatch, 'imageScale' | 'imagePosition'>> {
+  return { imageScale: preview.showRing === false || preview.file ? 1 : STORED_IMAGE_SCALE, imagePosition: { x: 0, y: 0 } };
 }
 
 export interface ImageAspect {

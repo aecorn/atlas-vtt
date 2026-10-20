@@ -6,9 +6,6 @@ import { t } from '../../../../i18n';
 import { cropReset } from './cropMath';
 import { useBatchProgress } from './useBatchProgress';
 import type { ProgressCount } from '../../primitives/useLingeringTask';
-import type { App } from 'obsidian';
-import { storedImageFile } from './storedTokenImage';
-import { previewFromEdit } from './tokenFraming';
 
 /** What a background conversion produced: a framed token's default crop, or the whole image. */
 export type PreviewConversionKind = 'default-crop' | 'whole';
@@ -62,6 +59,21 @@ function previewFromFile(file: File): TokenPreview {
   };
 }
 
+function previewFromEdit(token: EditTokenInput): TokenPreview {
+  return {
+    id: token.id,
+    tags: token.tags,
+    showRing: token.showRing ?? true,
+    ...(token.size !== undefined && { size: token.size }),
+    file: null,
+    previewUrl: token.imageUrl,
+    name: token.name,
+    ...cropReset({ file: null, showRing: token.showRing ?? true }),
+    isSelected: true,
+    isOptimizing: false,
+  };
+}
+
 interface PendingOptimization {
   result: Promise<ProcessedImage | undefined>;
   kind: PreviewConversionKind;
@@ -69,16 +81,11 @@ interface PendingOptimization {
   settled: boolean;
 }
 
-/** Each ring mode keeps its own framing; the first switch uses that mode's default fit. */
+/** A change of ring mode starts at that mode's default fit. */
 function updatedPreview(preview: TokenPreview, patch: TokenPreviewPatch): TokenPreview {
   const next = { ...preview, ...patch };
   return patch.showRing !== undefined && patch.showRing !== (preview.showRing ?? true)
-    ? {
-        ...next,
-        ...(preview.alternateCrop ?? cropReset(next)),
-        ...patch,
-        alternateCrop: { imageScale: preview.imageScale, imagePosition: preview.imagePosition },
-      }
+    ? { ...next, ...cropReset(next), ...patch }
     : next;
 }
 
@@ -89,7 +96,7 @@ function updatedPreview(preview: TokenPreview, patch: TokenPreviewPatch): TokenP
  * removing a preview cancels its conversion. Blob URLs are revoked when a
  * preview is removed or on unmount.
  */
-export function useTokenPreviews(mode: CreatorMode, app?: App | null): TokenPreviewsApi {
+export function useTokenPreviews(mode: CreatorMode): TokenPreviewsApi {
   const [defaultRing, setDefaultRing] = useState(true);
   const [previews, setPreviews] = useState<TokenPreview[]>([]);
   const previewsRef = useRef(previews);
@@ -188,16 +195,6 @@ export function useTokenPreviews(mode: CreatorMode, app?: App | null): TokenPrev
     }
   }, [mode, queuePatch]);
 
-  const trackOptimization = useCallback((id: string, pending: PendingOptimization): void => {
-    void pending.result.finally(() => {
-      pending.settled = true;
-      if (pending.controller.signal.aborted) return;
-      queuedFinishes.current += 1;
-      scheduleFlush();
-    });
-    pendingRef.current.set(id, pending);
-  }, [scheduleFlush]);
-
   const addImages = useCallback((images: PreviewImage[]): void => {
     // A statblock or a vault image is added once; the same key never names both.
     const sourceOf = (image: Pick<PreviewImage, 'statblockPath' | 'vaultPath'>): string | undefined => image.statblockPath ?? image.vaultPath;
@@ -218,33 +215,22 @@ export function useTokenPreviews(mode: CreatorMode, app?: App | null): TokenPrev
         controller, settled: false, kind: mode === 'token' && framed ? 'default-crop' : 'whole',
         result: optimizeOne(preview, framed, controller.signal),
       };
-      trackOptimization(preview.id, pending);
+      void pending.result.finally(() => {
+        pending.settled = true;
+        if (controller.signal.aborted) return;
+        queuedFinishes.current += 1;
+        scheduleFlush();
+      });
+      pendingRef.current.set(preview.id, pending);
     }
-  }, [mode, optimizeOne, defaultRing, changePreviews, startOptimizations, trackOptimization]);
+  }, [mode, optimizeOne, defaultRing, changePreviews, startOptimizations, scheduleFlush]);
 
   const reset = useCallback((editToken?: EditTokenInput | null): void => {
     previewsRef.current.forEach((p) => revokeIfBlob(p.previewUrl));
     cancelAllOptimizations();
     setDefaultRing(editToken?.showRing ?? true);
-    const preview = editToken?.imageUrl ? previewFromEdit(editToken) : null;
-    const sourcePath = preview?.imageSource?.path;
-    const convertSource = app && preview && sourcePath && editToken;
-    changePreviews(() => preview ? [{ ...preview, ...(convertSource && { previewUrl: '', isOptimizing: true }) }] : []);
-    if (!convertSource) return;
-    // Large originals go through the workers; the card only paints a token-sized copy.
-    const controller = new AbortController();
-    startOptimizations(1);
-    const result = storedImageFile(app, { ...editToken, imagePath: sourcePath })
-      .then(file => controller.signal.aborted ? undefined : optimizeOne({ ...preview, file }, false, controller.signal))
-      .catch((error: unknown) => {
-        if (!controller.signal.aborted) {
-          console.error(`[TokenCreator] Failed to read source of ${preview.name}:`, error);
-          queuePatch(preview.id, { isOptimizing: false });
-        }
-        return undefined;
-      });
-    trackOptimization(preview.id, { controller, settled: false, kind: 'whole', result });
-  }, [app, changePreviews, cancelAllOptimizations, optimizeOne, queuePatch, startOptimizations, trackOptimization]);
+    changePreviews(() => editToken?.imageUrl ? [previewFromEdit(editToken)] : []);
+  }, [changePreviews, cancelAllOptimizations]);
 
   const removeMany = useCallback((ids: readonly string[]): void => {
     const removed = new Set(ids);

@@ -3,7 +3,6 @@ import type { KeyboardEvent, MouseEvent } from 'react';
 import type { CollectionMetadata, EncounterAsset as StoredEncounterAsset } from '../../../services/AssetService';
 import { ATLAS_NATIVE_MODAL_CLASSES } from '../../../ui/nativeModal';
 import { t } from '../../../i18n';
-import type { TokenImageSource } from '../../../types/tokenImageSource';
 
 // ─── Tab / View Constants ───────────────────────────────────────────
 
@@ -46,8 +45,6 @@ export interface Asset {
 }
 
 export interface TokenAsset extends Asset {
-  imageSource?: TokenImageSource;
-  sourceImageUrl?: string;
   /** False preserves the whole artwork without an Atlas frame. Defaults to true. */
   showRing?: boolean;
   type: 'tokens';

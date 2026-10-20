@@ -81,11 +81,11 @@ it('starts at whole-image fit when turning the ring off and keeps later zoom edi
   act(() => result.current.setAllRings(false));
   expect(result.current.previews[0]?.imageScale).toBe(1.8);
   act(() => result.current.setAllRings(true));
-  expect(result.current.previews[0]).toMatchObject({ showRing: true, imageScale: 2, imagePosition: { x: 0.2, y: -0.1 } });
+  expect(result.current.previews[0]).toMatchObject({ showRing: true, imageScale: 0.8, imagePosition: { x: 0, y: 0 } });
   act(() => result.current.update('existing', { showRing: false }));
-  expect(result.current.previews[0]).toMatchObject({ showRing: false, imageScale: 1.8, imagePosition: { x: 0, y: 0 } });
+  expect(result.current.previews[0]).toMatchObject({ showRing: false, imageScale: 1, imagePosition: { x: 0, y: 0 } });
   act(() => result.current.updateSelected({ showRing: true }));
-  expect(result.current.previews[0]).toMatchObject({ showRing: true, imageScale: 2, imagePosition: { x: 0.2, y: -0.1 } });
+  expect(result.current.previews[0]).toMatchObject({ showRing: true, imageScale: 0.8, imagePosition: { x: 0, y: 0 } });
 });
 
 it('retains the original stored ringed crop when switching off and back on', () => {

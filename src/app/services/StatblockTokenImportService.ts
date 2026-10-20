@@ -10,7 +10,6 @@ import { vaultImageFile } from '../packages/components/asset-manager/token-creat
 import type { ProcessedImage } from '../imageProcessing/imageProcessing';
 import { convertTokenArt } from '../packages/components/asset-manager/token-creator/tokenImages';
 import { workSlices } from '../utils/workSlices';
-import { defaultImageSource, writeTokenImageSource } from './tokenImageSources';
 
 export interface StatblockImportItem {
   path: string;
@@ -30,7 +29,6 @@ interface ConvertingImport {
   path: string;
   name: string;
   showRing: boolean;
-  source: File;
   converted: Promise<ProcessedImage>;
 }
 type PlannedImport = ConvertingImport | { item: StatblockImportItem };
@@ -118,11 +116,10 @@ export class StatblockTokenImportService {
       name = row.name;
       const image = this.app.vault.getAbstractFileByPath(row.imagePath);
       if (!(image instanceof TFile)) return { item: { path, name, status: 'skipped', message: t('sbToken.imageGone') } };
-      const source = await vaultImageFile(this.app, image);
-      const converted = convertTokenArt(source, showRing, signal);
+      const converted = convertTokenArt(await vaultImageFile(this.app, image), showRing, signal);
       // Failures surface when the note is registered; notes never reached must not raise unhandled rejections.
       converted.catch(() => undefined);
-      return { path, name, showRing, source, converted };
+      return { path, name, showRing, converted };
     } catch (error) {
       return { item: { path, name, status: 'failed', message: error instanceof Error ? error.message : t('sbToken.failed') } };
     }
@@ -132,21 +129,18 @@ export class StatblockTokenImportService {
     const { path, name, showRing } = entry;
     let imagePath: string | undefined;
     let thumbnailPath: string | undefined;
-    let sourcePath: string | undefined;
     try {
       const { image, thumbnail } = await entry.converted;
-      sourcePath = await writeTokenImageSource(this.app, entry.source);
       imagePath = await writeAssetImage(this.app, name, await image.arrayBuffer());
       thumbnailPath = await AssetThumbnailService.getInstance(this.app, this.assets).tryThumbnailForImage(imagePath, thumbnail);
       const asset = await this.assets.addTokenAsset({
         name, imagePath, statblockPath: path, showRing, tags: [], collection, ...(thumbnailPath && { thumbnailPath }),
-        imageSource: defaultImageSource(sourcePath),
       });
       return { path, name, status: 'created', message: t('sbToken.created'), asset };
     } catch (error) {
       // An unconfirmed write may have committed. Never delete the image in this case.
       if (error instanceof AssetRegistrationUncertainError) return { path, name, status: 'failed', message: error.message, uncertain: true };
-      await discardAssetFiles(this.app, [imagePath, thumbnailPath, sourcePath]);
+      await discardAssetFiles(this.app, [imagePath, thumbnailPath]);
       return { path, name, status: 'failed', message: error instanceof Error ? error.message : t('sbToken.failed') };
     }
   }

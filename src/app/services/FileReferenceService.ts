@@ -82,7 +82,6 @@ export class FileReferenceService {
       let changed = follow(asset, 'filePath');
       switch (asset.type) {
         case 'token':
-          if (asset.imageSource) changed = follow(asset.imageSource, 'path') || changed;
           changed = follow(asset, 'imagePath') || changed;
           changed = follow(asset, 'statblockPath') || changed;
           break;

@@ -6,11 +6,10 @@ import type { EditTokenInput, TokenPreview } from '../../src/app/packages/compon
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 
 // jsdom cannot decode or encode images; the crop itself is covered by cropMath's and the image pipeline's tests
-const cropTokenImage = vi.hoisted(() => vi.fn(async (..._args: unknown[]) => ({
+const cropTokenImage = vi.hoisted(() => vi.fn(async () => ({
   image: { arrayBuffer: async () => new TextEncoder().encode('cropped').buffer } as Blob, thumbnail: null, preview: null,
 })));
-vi.mock('../../src/app/packages/components/asset-manager/token-creator/tokenImages', () => ({ cropTokenImage, optimizeUpload: cropTokenImage }));
-vi.mock('../../src/app/pixi/mapImage/prebuildMapImage', () => ({ prebuildMapImageAt: vi.fn() }));
+vi.mock('../../src/app/packages/components/asset-manager/token-creator/tokenImages', () => ({ cropTokenImage }));
 const thumbnails = vi.hoisted(() => {
   const thumbnail = async (path: string): Promise<string> => `thumbs/${path}`;
   return { tryCreateForImage: thumbnail, tryThumbnailForImage: thumbnail, tryDiscard: vi.fn(async () => {}) };
@@ -37,7 +36,7 @@ async function setup(stored: string, showRing: boolean, thumbnailPath?: string) 
     app, assetService, mode: 'token', previews: [{ ...preview, ...changes }], collection: 'Default', tags: [],
     editToken, waitForOptimized: async () => undefined,
   });
-  return { app, files, assetService, token, save, preview, editToken };
+  return { app, files, assetService, token, save };
 }
 
 const stored = 'atlas-vtt/collections/Default/tokens/Acolyte.webp';
@@ -47,10 +46,8 @@ it('crops the stored image into its own file when the ring is turned on', async 
   expect(await save()).toBe(1);
   expect(cropTokenImage).toHaveBeenCalledWith(expect.any(File), STORED_IMAGE_SCALE, { x: 0, y: 0 }, undefined);
   expect(files.get(stored)).toBe('cropped');
-  const saved = await assetService.getAssetById(token.id);
-  expect(saved).toMatchObject({ imagePath: stored, showRing: true, imageSource: { ringedDefaultScale: STORED_IMAGE_SCALE } });
-  expect(saved?.type === 'token' && files.get(saved.imageSource!.path)).toBe('original art');
-  expect(app.vault.createBinary).toHaveBeenCalledTimes(1);
+  expect(app.vault.createBinary).not.toHaveBeenCalled();
+  expect(await assetService.getAssetById(token.id)).toMatchObject({ imagePath: stored, showRing: true });
 });
 
 it('crops the stored image where the edit moved or zoomed it', async () => {
@@ -60,11 +57,16 @@ it('crops the stored image where the edit moved or zoomed it', async () => {
   expect(files.get(stored)).toBe('cropped');
 });
 
-it('saves scale and positioning changes to an existing ringless token', async () => {
-  const { files, assetService, token, save } = await setup(stored, false);
-  expect(await save({ showRing: false, imageScale: 2, imagePosition: { x: 0.1, y: -0.1 } })).toBe(1);
-  expect(cropTokenImage).toHaveBeenCalledWith(expect.any(File), 2, { x: 0.1, y: -0.1 }, undefined, false, false);
+it.each([
+  { imageScale: 2, imagePosition: { x: 0.1, y: -0.1 } },
+  { imageScale: 0.5, imagePosition: { x: 0, y: 0 } },
+  { imageScale: 1, imagePosition: { x: 0.1, y: -0.1 } },
+])('saves ringless zoom and position changes into the existing image: %o', async ({ imageScale, imagePosition }) => {
+  const { app, files, assetService, token, save } = await setup(stored, false);
+  expect(await save({ showRing: false, imageScale, imagePosition })).toBe(1);
+  expect(cropTokenImage).toHaveBeenCalledWith(expect.any(File), imageScale, imagePosition, undefined, false, false);
   expect(files.get(stored)).toBe('cropped');
+  expect(app.vault.createBinary).not.toHaveBeenCalled();
   expect(await assetService.getAssetById(token.id)).toMatchObject({ imagePath: stored, showRing: false });
 });
 
@@ -73,6 +75,7 @@ it('keeps an existing ringless image untouched at its default fit, including aft
   expect(await save({ showRing: false, ...cropReset({ file: null, showRing: false }) })).toBe(1);
   expect(cropTokenImage).not.toHaveBeenCalled();
   expect(app.vault.modifyBinary).not.toHaveBeenCalled();
+  expect(app.vault.createBinary).not.toHaveBeenCalled();
   expect(files.get(stored)).toBe('original art');
 });
 
@@ -108,53 +111,4 @@ it('removes the old thumbnail when the stored image is renamed to .webp', async 
   expect(await save()).toBe(1);
   expect(thumbnails.tryDiscard).toHaveBeenCalledWith('atlas-vtt/assets/thumbnails/Acolyte-png.webp');
   expect((await assetService.getAssetById(token.id))).toMatchObject({ thumbnailPath: 'thumbs/atlas-vtt/collections/Default/tokens/Acolyte.webp' });
-});
-
-it.each([true, false])('reuses the preserved pixels after saving, reopening and zooming out (ring: %s)', async (showRing) => {
-  const { app, files, assetService, token, save, preview, editToken } = await setup(stored, showRing);
-  expect(await save({ showRing, imageScale: 2 })).toBe(1);
-  const saved = await assetService.getAssetById(token.id);
-  if (saved?.type !== 'token') throw new Error('Missing token');
-  const source = saved.imageSource!;
-  expect(source[showRing ? 'framed' : 'unframed'].imageScale).toBe(2);
-  expect(files.get(stored)).toBe('cropped');
-  expect(files.get(source.path)).toBe('original art');
-  const reopened = { ...preview, showRing, imageSource: source, ...source[showRing ? 'framed' : 'unframed'] };
-  const options = {
-    app, assetService, mode: 'token' as const, collection: 'Default', tags: [],
-    editToken: { ...editToken, imageSource: source }, waitForOptimized: async () => undefined,
-  };
-  cropTokenImage.mockClear();
-  expect(await saveTokenPreviews({ ...options, previews: [reopened] })).toBe(1);
-  expect(cropTokenImage).not.toHaveBeenCalled();
-  expect(await saveTokenPreviews({ ...options, previews: [{ ...reopened, imageScale: 0.6 }] })).toBe(1);
-  const croppedFrom = cropTokenImage.mock.calls[0]![0] as File;
-  expect(new TextDecoder().decode(await croppedFrom.arrayBuffer())).toBe('original art');
-  expect(files.get(source.path)).toBe('original art');
-  expect((await assetService.getAssetById(token.id))).toMatchObject({ imageSource: { path: source.path, [showRing ? 'framed' : 'unframed']: { imageScale: 0.6 } } });
-  expect(app.vault.createBinary).toHaveBeenCalledTimes(1);
-});
-
-it('stops before overwriting the image when its backup cannot be written', async () => {
-  const { app, files, save } = await setup(stored, false);
-  vi.mocked(app.vault.createBinary).mockRejectedValueOnce(new Error('Disk full'));
-  await expect(save({ showRing: false, imageScale: 2 })).rejects.toThrow('Disk full');
-  expect(files.get(stored)).toBe('original art');
-  expect(app.vault.modifyBinary).not.toHaveBeenCalled();
-});
-
-it('does not fall back to the rendered crop when a preserved source is missing', async () => {
-  const { app, files, assetService, token, save, preview, editToken } = await setup(stored, false);
-  await save({ showRing: false, imageScale: 2 });
-  const saved = await assetService.getAssetById(token.id);
-  if (saved?.type !== 'token') throw new Error('Missing token');
-  files.delete(saved.imageSource!.path);
-  cropTokenImage.mockClear();
-  await expect(saveTokenPreviews({
-    app, assetService, mode: 'token', collection: 'Default', tags: [],
-    previews: [{ ...preview, imageSource: saved.imageSource, showRing: false, imageScale: 0.6 }],
-    editToken: { ...editToken, imageSource: saved.imageSource }, waitForOptimized: async () => undefined,
-  })).rejects.toThrow('no longer exists');
-  expect(cropTokenImage).not.toHaveBeenCalled();
-  expect(files.get(stored)).toBe('cropped');
 });

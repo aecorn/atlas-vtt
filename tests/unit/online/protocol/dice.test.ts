@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { MAX_ROLLED_DICE, parseGmMessage, parsePlayerMessage, parseSharedRoll, type SharedRoll } from '../../../../src/app/online/protocol/index.ts';
 

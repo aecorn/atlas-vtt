@@ -1,7 +1,7 @@
 /**
- * Graphics of the token drag ruler: the path runs just under the tokens so the
- * dragged token covers its own end point, the distance label sits halfway
- * along the path, above the token UI so bars and nameplates never hide it.
+ * Graphics of the token drag ruler: the path runs just under the tokens, so the dragged
+ * token covers its end under its centre; the distance label sits halfway along the path,
+ * above the token UI so bars and nameplates never hide it.
  */
 
 import { Container, Graphics } from 'pixi.js';

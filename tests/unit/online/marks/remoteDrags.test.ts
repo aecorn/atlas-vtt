@@ -1,5 +1,6 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Bounds, Text } from 'pixi.js';
+import { Bounds, Text, type Graphics } from 'pixi.js';
 import { dragPathCells, RemoteDrags, type RemoteDrag } from '../../../../src/app/online/marks/RemoteDrags.ts';
 import type { MeasureRules } from '../../../../src/app/online/marks/RemoteMeasures.ts';
 import { cellToWorld, worldToCell, type FormationGrid } from '../../../../src/app/encounters/encounterFormation';
@@ -9,6 +10,8 @@ import type { GridSystem } from '../../../../src/app/grid/GridSystem';
 import { DragRuler } from '../../../../src/app/pixi/token-renderer/DragRuler';
 import type { DragRulerView } from '../../../../src/app/pixi/token-renderer/DragRulerView';
 import type { ViewAtlasState } from '../../../../src/app/storeFactory';
+import { LIGHTING_Z_INDEX } from '../../../../src/app/pixi/lighting/LightingRenderer';
+import { computeTokenPixelSize } from '../../../../src/app/pixi/token-renderer/tokenSizing';
 import type { DiagonalRule } from '../../../../src/app/types/collectionSettingsTypes';
 
 const GRID = { type: 'square', size: 70, offsetX: 0, offsetY: 0 } as const;
@@ -96,6 +99,14 @@ describe('RemoteDrags', () => {
   it('shows nothing for a drag that has not left its start', () => {
     drags.update([drag([[35, 35], [35.2, 35]]), drag([[35, 35]], { key: 'bear' })]);
     expect(drags.showing).toBe(false);
+  });
+
+  it('draws its paths above the lighting and stops each at the rim of the token it leads to', () => {
+    expect(drags.paths.zIndex).toBeGreaterThan(LIGHTING_Z_INDEX);
+    drags.update([drag([[35, 35], [245, 35]])]);
+    const rim = computeTokenPixelSize(GRID.size, 1) / 2;
+    // Half the widest stroke of a measure path lies past its end.
+    expect((drags.paths.children[0] as Graphics).getLocalBounds().maxX).toBeCloseTo(245 - rim + 3, 0);
   });
 
   it('shows nothing before the scene\'s rules are known', () => {

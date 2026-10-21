@@ -13,7 +13,7 @@ export interface CompleteFormula {
   /** The formula rolled, e.g. `1d20+3` for `+3`. */
   formula: string;
   parsed: ParsedFormula;
-  /** The formula wrote its own dice: the set's dice take no names and colours there. */
+  /** The formula wrote its own dice; appearance needs a separate opt-in. */
   written: boolean;
 }
 

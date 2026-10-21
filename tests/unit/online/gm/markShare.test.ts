@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { MARKS_INTERVAL_MS, MAX_LASER_SPAN_MS, type PlayerLaser, type PlayerMeasure } from '../../../../src/app/online/protocol/index.ts';
 import { describe, expect, it } from 'vitest';
 import { checkLaser, checkMeasure, MARKS_PER_SECOND, nearMap, swatchColour } from '../../../../src/app/online/gm/markCheck.ts';

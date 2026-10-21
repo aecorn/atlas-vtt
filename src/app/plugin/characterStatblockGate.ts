@@ -4,6 +4,7 @@ import type { StatblockGate } from '../online/gm/book/statblockGate.ts';
 import { AssetService } from '../services/AssetService';
 import { TemplateLibrary } from '../statblocks/library/TemplateLibrary';
 import { NoteFieldWriter } from '../statblocks/notes/NoteFieldWriter';
+import { templateDiceSet } from '../statblocks/resolve/templateDiceSet';
 import { readStatblock } from '../statblocks/resolve/readStatblock';
 
 /**
@@ -16,6 +17,7 @@ import { readStatblock } from '../statblocks/resolve/readStatblock';
 export function characterStatblockGate(app: App): StatblockGate {
   return {
     libraryStatblock: (placed) => libraryTokenOf(placed, AssetService.getInstance(app).loadedTokenAssets())?.statblockPath ?? null,
+    diceSet: (path) => templateDiceSet(app, path),
     read: (path) => readStatblock(app, path),
     write: async (path, patches) => {
       const { applied, conflicts, problem } = await NoteFieldWriter.forApp(app).write(path, patches);

@@ -7,6 +7,7 @@ import { allowZoom } from '../pixi/zoomRange';
 import { addTokenHighlight } from '../pixi/utils/tokenHighlight';
 import type { SettingsService } from '../services/SettingsService';
 import type { ViewAtlasStore } from '../storeFactory';
+import { mapTokens } from '../tokens/offMap';
 
 /** Map navigation keyboard shortcuts (Shift+1: fit map, Shift+2: zoom to selected token). */
 export function useMapNavigationHotkeys(view: AtlasView | null, store: ViewAtlasStore, settings: SettingsService | undefined): void {
@@ -37,7 +38,7 @@ export function useMapNavigationHotkeys(view: AtlasView | null, store: ViewAtlas
         const tokenId = selectedIds[0];
         if (tokenId === undefined) return;
 
-        const token = objects.tokens[tokenId];
+        const token = mapTokens(objects)[tokenId];
         if (!token || !view) return;
 
         const vp = view?.renderer?.getViewportInstance?.();

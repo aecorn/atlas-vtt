@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Measurements } from '../../src/app/pixi/MeasureRenderer';
 import { measureFrom, measureScene, type MeasureScene } from '../helpers/measureScene';

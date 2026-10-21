@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { statblockSheet } from '../../../../../src/app/online/gm/book/statblockSheet';
 import { parseBookStatblock, type BookStatblock, type SheetNode } from '../../../../../src/app/online/protocol/index.ts';

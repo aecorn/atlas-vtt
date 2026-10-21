@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { PixiRendererOrchestrator } from '../../src/app/PixiRendererOrchestrator';
 import { measurePlayersView } from '../../src/app/pixi/measurePlayersView';

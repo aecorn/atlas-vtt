@@ -219,6 +219,20 @@ describe('the dashboard', () => {
       const modal = query('.atlas-collection-settings-modal');
       const tabs = [...modal.querySelectorAll('.atlas-collection-settings-tab')].map((tab) => tab.textContent);
       expect(tabs).toEqual(['Game System', 'Dice', 'Grid & Measure', 'Conditions', 'Resources', 'Initiative']);
+      // The campaign's rules open fullscreen, as a collection's settings do: the window less the overlay's margin
+      const window = box(modal);
+      expect(window.left).toBeCloseTo(32, 0);
+      expect(window.top).toBeCloseTo(32, 0);
+      expect(document.documentElement.clientWidth - window.right).toBeCloseTo(32, 0);
+      expect(document.documentElement.clientHeight - window.bottom).toBeCloseTo(32, 0);
+      // A form keeps a readable width, centred; the campaign's Resources tab has no recovery pane
+      const content = box(query('.atlas-collection-settings-content'));
+      const form = box(query('.atlas-collection-settings-page'));
+      expect(form.width).toBeLessThanOrEqual(760);
+      expect(form.left - content.left).toBeCloseTo(content.right - form.right, -1);
+      fireEvent.click([...modal.querySelectorAll('.atlas-collection-settings-tab')].find((tab) => tab.textContent === 'Resources')!);
+      expect(modal.querySelector('.atlas-csm-token-stage')).not.toBeNull();
+      expect(modal.querySelector('.atlas-rc-pane')).toBeNull();
       await page.screenshot({ path: `__screenshots__/atlas-dashboard-system-dialog-${theme}.png`, element: modal });
     });
   }

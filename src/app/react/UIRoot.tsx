@@ -16,6 +16,7 @@ import DMScreen from './components/DMScreen';
 import { InitiativeTracker } from './components/InitiativeTracker';
 import { DiceRollLog } from './components/dice-log/DiceRollLog';
 import { DiceRollDisplay } from './components/dice/DiceRollDisplay';
+import { TurnAnnouncer } from './components/TurnAnnouncer';
 import { RandomTables } from './components/randomTables/RandomTablesPanel';
 import { MapLoadingOverlay } from './components/MapLoadingOverlay';
 import { SceneTabBar } from './components/SceneTabBar';
@@ -25,6 +26,7 @@ import { usePresentedScene } from './hooks/usePresentedScene';
 import { canRunMapHotkeys, matchesMapHotkey } from '../keyboard/mapHotkeys';
 import { SettingsService } from '../services/SettingsService';
 import { HotkeyHelp } from '../keyboard/HotkeyHelp';
+import { defeatedOnMap } from '../initiative/defeatedOnMap';
 
 
 // Import the new context and hook
@@ -126,13 +128,13 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
       if (!isPlayerView && initiativeTrackerOpen && initiativeIsActive) {
         if (matchesMapHotkey(e, 'previousTurn', settings)) {
           e.preventDefault();
-          previousTurn();
+          previousTurn(defeatedOnMap(app, store.getState()));
           window.dispatchEvent(new CustomEvent('atlas-initiative-hotkey', { detail: 'prev' }));
           return;
         }
         if (matchesMapHotkey(e, 'nextTurn', settings)) {
           e.preventDefault();
-          nextTurn();
+          nextTurn(defeatedOnMap(app, store.getState()));
           window.dispatchEvent(new CustomEvent('atlas-initiative-hotkey', { detail: 'next' }));
           return;
         }
@@ -141,7 +143,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isPlayerView, initiativeTrackerOpen, initiativeIsActive, nextTurn, previousTurn, store, view, settings]);
+  }, [app, isPlayerView, initiativeTrackerOpen, initiativeIsActive, nextTurn, previousTurn, store, view, settings]);
 
   return (
     <AtlasUIContext.Provider value={contextValue}>
@@ -181,6 +183,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
           <BottomToolbarRow
             start={!isPlayerView && <PanelBoundary name="undo and redo"><UndoRedoControls viewId={view?.viewId} /></PanelBoundary>}
             end={!isPlayerView && <PanelBoundary name="the view actions"><ViewActionsMenu app={app} filePath={view?.file?.path} /></PanelBoundary>}
+            above={!isPlayerView && <PanelBoundary name="the turn banner"><TurnAnnouncer /></PanelBoundary>}
           >
             <PanelBoundary name="the toolbar"><MainToolbar viewId={view?.viewId} /></PanelBoundary>
           </BottomToolbarRow>

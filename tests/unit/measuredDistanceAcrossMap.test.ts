@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { Text } from 'pixi.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PATHFINDER_2E } from '../../src/app/gameSystems/presets/pathfinder2e';

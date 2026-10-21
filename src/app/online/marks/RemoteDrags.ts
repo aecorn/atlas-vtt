@@ -4,7 +4,9 @@ import { tokenCenterShift } from '../../grid/gridPlacement';
 import { formatDistance } from '../../grid/measurementFormat';
 import { cssColorToHexNumber, getObsidianAccentColor } from '../../pixi/utils/colorUtils';
 import { destroyTree } from '../../pixi/utils/destroyTree';
-import { createMeasureLabelText, drawMeasureLabel, drawMeasurePath, drawMeasurePoint, pathMidpoint } from '../../pixi/utils/measureDrawing';
+import { MAP_LAYER_Z } from '../../pixi/mapLayerOrder';
+import { computeTokenPixelSize } from '../../pixi/token-renderer/tokenSizing';
+import { createMeasureLabelText, drawMeasureLabel, drawMeasurePath, drawMeasurePoint, pathMidpoint, shortenPathEnd } from '../../pixi/utils/measureDrawing';
 import { readableLabelFontSize } from './labelSize.ts';
 import type { MeasureRules } from './RemoteMeasures.ts';
 
@@ -52,11 +54,11 @@ export function dragPathCells({ grid, measurement }: MeasureRules, path: readonl
 /**
  * Drags made elsewhere, drawn as Atlas draws its own drag ruler: the path in the accent colour with
  * its start and waypoints marked, and the distance on a pill at its middle, worked out here by the
- * scene's rules. `paths` belongs just under the tokens, so a token covers its own landing; `labels`
- * above them.
+ * scene's rules. `paths` stand above the lighting, so the dark never covers them, and stop at the
+ * dragged token's rim; `labels` above the tokens' bars and nameplates.
  */
 export class RemoteDrags {
-  readonly paths = new Container({ label: 'remote-drag-paths', eventMode: 'none', interactiveChildren: false });
+  readonly paths = new Container({ label: 'remote-drag-paths', zIndex: MAP_LAYER_Z.measure, eventMode: 'none', interactiveChildren: false });
   readonly labels = new Container({ label: 'remote-drag-labels', zIndex: LABEL_Z_INDEX, eventMode: 'none', interactiveChildren: false });
   private readonly zoom: () => number;
   private readonly rules: () => MeasureRules | null;
@@ -123,8 +125,8 @@ export class RemoteDrags {
   private draw(drawn: Drawn, { path, cells, snaps }: RemoteDrag, key: string, colour: number, rules: MeasureRules): void {
     drawn.key = key;
     drawn.path.clear();
-    drawMeasurePath(drawn.path, colour, path);
-    // The token covers its landing; the start and the waypoints stay marked.
+    drawMeasurePath(drawn.path, colour, shortenPathEnd(path, computeTokenPixelSize(rules.grid.size, cells) / 2));
+    // The start and the waypoints stay marked.
     for (const point of path.slice(0, -1)) drawMeasurePoint(drawn.path, colour, point);
     const distance = formatDistance(dragPathCells(rules, path, cells, snaps), rules.measurement);
     if (drawn.text.text !== distance) drawn.text.text = distance;

@@ -43,6 +43,11 @@ export class StatblockShare {
     return this.sheets.drawn(character.statblockPath, character.drawnWith.definitions, character.drawnWith.resources);
   }
 
+  /** A character's note as it is drawn now; undefined before it was read. */
+  resolved(path: string): ResolvedStatblock | null | undefined {
+    return this.sheets.resolved(path);
+  }
+
   /** What a player was sent of their character's statblock: null when a book went without one. */
   sent(player: string, character: PlayedCharacter | null, drawn: DrawnStatblock | null): void {
     if (drawn === null) this.sentTo.delete(player);

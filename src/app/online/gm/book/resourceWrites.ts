@@ -97,7 +97,7 @@ export class ResourceWrites {
   private apply(edit: TokenResourceEdit, answer: ResourceAnswer): void {
     const state = this.store.getState();
     const token = state.objects.tokens[edit.tokenId];
-    const value = token === undefined || !loaded(state) || this.ports.ownerOf(edit.tokenId) !== edit.from ? null : editableValue(token, this.ports.definitions(), edit.key);
+    const value = token === undefined || !loaded(state) || this.ports.ownerOf(edit.tokenId) !== edit.from ? null : editableValue(token, this.ports.definitions(), edit.key, edit.tracked);
     if (token === undefined || value === null) return answer(null);
     const next = withCurrent(value, edit.current);
     if (next.current !== value.current) {

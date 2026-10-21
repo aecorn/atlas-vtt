@@ -40,6 +40,8 @@ export interface PlayerRoll {
   readonly mode?: RollMode;
   readonly flavor?: string;
   readonly request?: RollRequestAnswer;
+  /** Ask for the GM’s names and colours on an explicit matching pool. */
+  readonly setAppearance?: true;
 }
 
 /**
@@ -59,6 +61,9 @@ export interface SharedDie {
   readonly success?: true;
   readonly failure?: true;
   readonly label?: string;
+  /** The name and colour the GM's dice set gives this die. */
+  readonly name?: string;
+  readonly colour?: string;
 }
 
 /** A roll as players see it: Atlas's result without who rolled it, its source reduced to what players may know. */
@@ -110,6 +115,7 @@ export function parsePlayerRoll(value: Record<string, unknown>): PlayerRoll | nu
   if (!isText(scene, MAX_SCENE_ID) || scene === '' || !isText(formula, MAX_FORMULA)) return null;
   if (token !== null && (typeof token !== 'string' || !TOKEN_ID_PATTERN.test(token))) return null;
   if (mode !== undefined && !isRollMode(mode)) return null;
+  if (value.setAppearance !== undefined && value.setAppearance !== true) return null;
   const shownFlavor = flavor === undefined ? undefined : shownLine(flavor, MAX_FLAVOR);
   const request = value.request === undefined ? undefined : parseRequestAnswer(value.request);
   if (shownFlavor === null || request === null) return null;
@@ -118,6 +124,7 @@ export function parsePlayerRoll(value: Record<string, unknown>): PlayerRoll | nu
     ...(mode !== undefined && mode !== 'public' && { mode }),
     ...(shownFlavor !== undefined && { flavor: shownFlavor }),
     ...(request !== undefined && { request }),
+    ...(value.setAppearance === true && { setAppearance: true }),
   };
 }
 
@@ -126,14 +133,16 @@ const DIE_LABEL = /^[\p{L}\p{N}' -]{1,24}$/u;
 
 function parseDie(value: unknown): SharedDie | null {
   if (!isRecord(value)) return null;
-  const { die, value: rolled, max, min, label } = value;
+  const { die, value: rolled, max, min, label, name, colour } = value;
   const fate = die === 'dF';
   if (typeof die !== 'string' || !isInteger(max, 1, MAX_FACES) || !isInteger(rolled, -1, max)) return null;
   if (fate ? max !== 1 || min !== -1 : die !== `d${max}` || min !== undefined || rolled < 1) return null;
   if (FLAGS.some((flag) => value[flag] !== undefined && value[flag] !== true)) return null;
   if (label !== undefined && (typeof label !== 'string' || label.length > MAX_DIE_LABEL || !DIE_LABEL.test(label))) return null;
+  if (name !== undefined && (typeof name !== 'string' || name.trim() === '' || name.length > 40 || /[\p{Cc}\p{Cf}]/u.test(name))) return null;
+  if (colour !== undefined && (typeof colour !== 'string' || !/^#[0-9a-f]{6}$/i.test(colour))) return null;
   const flags = Object.fromEntries(FLAGS.filter((flag) => value[flag] === true).map((flag) => [flag, true]));
-  return { die, value: rolled, max, ...(fate && { min: -1 as const }), ...flags, ...(label !== undefined && { label }) };
+  return { die, value: rolled, max, ...(fate && { min: -1 as const }), ...flags, ...(label !== undefined && { label }), ...(name !== undefined && { name }), ...(colour !== undefined && { colour }) };
 }
 
 function parseSource(value: unknown): SharedRoll['source'] | null {

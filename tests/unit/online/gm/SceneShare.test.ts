@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { ASSET_CHUNK_BYTES, MARKS_INTERVAL_MS } from '../../../../src/app/online/protocol/index.ts';
 import { describe, expect, it } from 'vitest';
 import { sha256Hex } from '../../../../src/app/online/gm/assetServe.ts';

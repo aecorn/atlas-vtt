@@ -1,8 +1,9 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { Container, Graphics } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import { DragRulerView } from '../../src/app/pixi/token-renderer/DragRulerView';
-import { pathMidpoint } from '../../src/app/pixi/utils/measureDrawing';
+import { pathMidpoint, shortenPathEnd } from '../../src/app/pixi/utils/measureDrawing';
 
 function makeScene(): { viewport: Container; background: Graphics; tokens: Container; view: DragRulerView } {
   const viewport = new Container();
@@ -28,6 +29,16 @@ describe('DragRulerView', () => {
   it('stays hidden until a drag draws it', () => {
     const { view } = makeScene();
     expect(view.layers.every(layer => !layer.visible)).toBe(true);
+  });
+});
+
+describe('shortenPathEnd', () => {
+  it('ends the last segment that far before its end', () => {
+    expect(shortenPathEnd([{ x: 0, y: 0 }, { x: 0, y: 100 }, { x: 100, y: 100 }], 35)).toEqual([{ x: 0, y: 0 }, { x: 0, y: 100 }, { x: 65, y: 100 }]);
+  });
+
+  it('drops a last segment shorter than the gap', () => {
+    expect(shortenPathEnd([{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 120, y: 0 }], 35)).toEqual([{ x: 0, y: 0 }, { x: 100, y: 0 }]);
   });
 });
 

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { Blob as NodeBlob, File as NodeFile } from 'node:buffer';
 import { cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';

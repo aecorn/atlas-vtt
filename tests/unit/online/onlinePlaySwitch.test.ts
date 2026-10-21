@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import type { Plugin } from 'obsidian';
 import { describe, expect, it, vi } from 'vitest';
 import { registerOnlinePlay } from '../../../src/app/plugin/onlinePlay';

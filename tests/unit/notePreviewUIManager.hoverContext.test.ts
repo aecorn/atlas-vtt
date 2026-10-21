@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { EventEmitter } from 'events';
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { Platform, WorkspaceLeaf } from 'obsidian';

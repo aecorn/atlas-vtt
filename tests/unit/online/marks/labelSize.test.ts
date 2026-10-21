@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { measureLabelFontSize } from '../../../../src/app/pixi/utils/measureDrawing';
 import { MIN_LABEL_PX, readableLabelFontSize } from '../../../../src/app/online/marks/labelSize.ts';

@@ -3,6 +3,7 @@ import { rollingRules } from '../../gameSystems/diceSets';
 import { completeFormula } from '../../tools/completeFormula';
 import { getDiceCrit } from '../../tools/diceCrit';
 import { rollFormula } from '../../tools/diceFormula';
+import { dressSetDice } from '../../tools/diceAppearance';
 import type { DiceRules } from '../../types/diceRulesTypes';
 import type { RollingDice } from '../../types/diceSetTypes';
 import { sharedRoll } from './RollShare.ts';
@@ -18,10 +19,10 @@ function cryptoRandom(): number {
  * Atlas's own player window must not show. A formula without dice (`+2`) is added to the map's dice,
  * as Atlas's dice tool adds it (`completeFormula`). Null for an empty formula or one that does not parse.
  */
-export function quietRoll(formula: string, rules: DiceRules | RollingDice, id: string, now: number, random: () => number = cryptoRandom): SharedRoll | null {
+export function quietRoll(formula: string, rules: DiceRules | RollingDice, id: string, now: number, random: () => number = cryptoRandom, setAppearance = false): SharedRoll | null {
   const complete = formula.trim() === '' ? null : completeFormula(formula, rules);
   if (complete === null || !complete.ok) return null;
   const looks = complete.written ? [] : rollingRules(rules).dice;
   const { rolls, modifiers, total, linear } = rollFormula(complete.parsed, random, rules, looks);
-  return sharedRoll({ id, timestamp: now, formula: complete.formula, rolls, modifiers, total, crit: getDiceCrit(rolls, rules), ...(!linear && { linear: false as const }) });
+  return sharedRoll({ id, timestamp: now, formula: complete.formula, rolls: complete.written && setAppearance ? dressSetDice(rolls, rollingRules(rules)) : rolls, modifiers, total, crit: getDiceCrit(rolls, rules), ...(!linear && { linear: false as const }) });
 }

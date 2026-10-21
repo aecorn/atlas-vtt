@@ -137,6 +137,9 @@ export class PixiAppManager {
       useBackBuffer: this.throughBackBuffer,
       autoDensity: true,
       resolution: window.devicePixelRatio || 1,
+      // The map has no accessible display objects; since PIXI 8.22 Tab would otherwise
+      // switch on its accessibility layer, which walks the whole stage after every render.
+      accessibilityOptions: { activateOnTab: false },
     };
   }
 

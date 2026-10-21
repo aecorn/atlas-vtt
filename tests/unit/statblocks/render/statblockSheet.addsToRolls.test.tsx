@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -5,7 +6,6 @@ import type { TemplateBlock, TemplateField } from '../../../../src/app/statblock
 import { StatblockSheet } from '../../../../src/app/statblocks/render/StatblockSheet';
 import { blockEl, fakeApp, renderSheet, templateOf } from './sheetTestKit';
 
-vi.mock('../../../../src/app/atlas-view', () => ({ ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 vi.mock('../../../../src/app/atlasViewType', () => ({ ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 
 afterEach(cleanup);

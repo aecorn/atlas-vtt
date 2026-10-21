@@ -16,12 +16,12 @@ import { syncCollectionSystem } from '../../services/collectionSystemSync';
 import { useSystemPresets } from '../hooks/useSystemPresets';
 import { useDiceSets } from '../hooks/useDiceSets';
 import { useCollectionSettingsDraft } from './collection-settings/useCollectionSettingsDraft';
+import { collectionRulesView } from './collection-settings/collectionRulesView';
 import { useExperimentalFeature } from '../hooks/useExperimentalFeature';
 import { DefaultWidgetsTab } from './collection-settings/DefaultWidgetsTab';
 import { resourceFieldSuggestions } from '../../resources/resourceFieldSuggestions';
-import { initiativeFieldSuggestions } from '../../initiative/initiativeFieldSuggestions';
+import { useModifierFieldOffer } from './collection-settings/useModifierFieldOffer';
 import { RandomTablesTab } from './collection-settings/RandomTablesTab';
-import { viewOfRules, type RulesView } from '../../gameSystems/rulesView';
 import { CreatureFiltersTab } from './collection-settings/CreatureFiltersTab';
 import { useCollectionCreatures } from './collection-settings/useCollectionCreatures';
 import { useRoleTemplates } from './collection-settings/useRoleTemplates';
@@ -92,7 +92,7 @@ export function CollectionSettingsModal({
   const collectionCreatures = useCollectionCreatures(app ?? null, assetService, collectionIds, offersFields);
   const roleTemplates = useRoleTemplates(app ?? null, collectionStatblockRoles(draft, systemPresets.presets), offersFields);
   const statblockRecords = collectionCreatures.creatures.map((creature) => creature.fields);
-  const initiativeFields = initiativeFieldSuggestions(roleTemplates, statblockRecords);
+  const modifierFields = useModifierFieldOffer(app ?? null, roleTemplates, collectionCreatures.creatures, offersFields);
 
   // Resolve the collection name for the header
   useEffect(() => {
@@ -111,12 +111,7 @@ export function CollectionSettingsModal({
     return () => { cancelled = true; };
   }, [isOpen, collectionId, assetService]);
 
-  const rulesView = viewOfRules(draft, systemPresets.presets, diceSets.sets);
-  // A collection's statblock roles are part of its game system, as a preset holds them.
-  const view: RulesView = {
-    ...rulesView,
-    systemRules: { ...rulesView.systemRules, statblockRoles: collectionStatblockRoles(draft, systemPresets.presets) },
-  };
+  const view = collectionRulesView(draft, systemPresets.presets, diceSets.sets);
   const canSave = view.isValid
     && draft.customCreatureFilters.every(isCompleteCreatureFilter)
     && statblockRolesAreValid(draft.statblockRoles ?? []);
@@ -158,7 +153,8 @@ export function CollectionSettingsModal({
             onChange={draft.setDefaultWidgets}
             initiative={view.initiative}
             onInitiativeChange={initiativeEdit(draft, view)}
-            initiativeFieldSuggestions={initiativeFields}
+            initiativeFieldSuggestions={modifierFields.suggestions}
+            modifierStatblocks={modifierFields.statblocks}
             initiativeNotice={playedNotice}
           />
         );
@@ -224,6 +220,7 @@ export function CollectionSettingsModal({
       canSave={canSave}
       onSave={() => { void save(); }}
       onClose={onClose}
+      size="fullscreen"
     >
       <RulesSettingsTabs
         tabs={collectionTabs(statblockEditorOn)}
@@ -236,7 +233,8 @@ export function CollectionSettingsModal({
         onDeletePreset={handleDeletePreset}
         lightingOn={lightingOn}
         fieldSuggestions={resourceFieldSuggestions(roleTemplates, statblockRecords)}
-        initiativeFieldSuggestions={initiativeFields}
+        initiativeFieldSuggestions={modifierFields.suggestions}
+        modifierStatblocks={modifierFields.statblocks}
         renderOther={renderOther}
         rulesNotice={playedNotice}
       />

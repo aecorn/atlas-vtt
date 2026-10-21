@@ -1,5 +1,6 @@
 import {
-  MAX_ABILITIES, MAX_GM_FRAME, MAX_SHEET_CHARS, MAX_SHEET_NODES, type AbilityComponent, type AbilityEntry, type SheetNode, type SheetText, type SheetValue,
+  MAX_ABILITIES, MAX_GM_FRAME, MAX_SHEET_CHARS, MAX_SHEET_NODES, type AbilityComponent, type AbilityEntry, type SheetNode, type SheetText,
+  type SheetValue,
 } from '../../protocol/index.ts';
 
 /** Bytes of a frame left for the rest of the message a statblock travels in (envelope, type, keys). */
@@ -34,6 +35,7 @@ function ownChars(node: SheetNode): number {
     case 'metric': return node.values.reduce((sum, value) => sum + valueChars(value), 0);
     case 'heading': return node.text.length;
     case 'table': return JSON.stringify([node.columns, node.rows, node.worked]).length + (node.workedLabels ?? []).join('').length;
+    case 'counters': return node.counters.map((row) => row.name + (row.reset ?? '') + (row.regain ?? '')).join('').length;
     default: return 0;
   }
 }

@@ -38,22 +38,36 @@ export function toRollFormula(text: string): string {
     .replace(/\+-/g, '-');
 }
 
-/** Splits text into plain and dice segments, for renderers that build their own nodes. */
+/**
+ * A `@` reference that is part of a match's formula: joined to it by operators, brackets and spaces
+ * alone, after it (`2d6 + @int`, `2d6 + (@int)`) or before it (`@int + 2d6`, `@level d6`). Shown
+ * text has every reference that names a number filled in (`fillReferences`), so one left names
+ * nothing: the match is part of a roll that cannot be made, and is no roll of its own. An `@`
+ * inside a word (an address) is none.
+ */
+const REFERENCE_AFTER = /^[\s()+\-−–*/×]*(?<![\w.])@[A-Za-z_]/;
+const REFERENCE_BEFORE = /(?<![\w.])@[A-Za-z_][\w.-]*[\s()+\-−–*/×]*$/;
+
+/** Splits text into plain and dice segments: what renderers build their own nodes from, and what the card links. */
 export function splitDiceSegments(text: string): Array<{ text: string; dice: boolean }> {
   const segments: Array<{ text: string; dice: boolean }> = [];
+  const plain = (part: string): void => {
+    const last = segments[segments.length - 1];
+    if (last && !last.dice) last.text += part;
+    else segments.push({ text: part, dice: false });
+  };
   DICE_PATTERN.lastIndex = 0;
 
   let cursor = 0;
   let match: RegExpExecArray | null;
   while ((match = DICE_PATTERN.exec(text)) !== null) {
-    if (match.index > cursor) {
-      segments.push({ text: text.slice(cursor, match.index), dice: false });
-    }
-    segments.push({ text: match[0], dice: true });
-    cursor = match.index + match[0].length;
+    if (match.index > cursor) plain(text.slice(cursor, match.index));
+    const end = match.index + match[0].length;
+    const partOfReference = REFERENCE_AFTER.test(text.slice(end)) || REFERENCE_BEFORE.test(text.slice(0, match.index));
+    if (partOfReference) plain(match[0]);
+    else segments.push({ text: match[0], dice: true });
+    cursor = end;
   }
-  if (cursor < text.length) {
-    segments.push({ text: text.slice(cursor), dice: false });
-  }
+  if (cursor < text.length) plain(text.slice(cursor));
   return segments;
 }

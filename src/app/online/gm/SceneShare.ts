@@ -20,6 +20,7 @@ import { MarkShare, type MarkSharePorts } from './MarkShare.ts';
 import { sceneWalls, type MapSize } from './moveCheck.ts';
 import { ownerIn, type SeatSource } from './seatSource.ts';
 import { PlayerMoves } from './playerMoves.ts';
+import { movesOutOfTurn } from './turnShare.ts';
 import { RulesShare, type RulesSharePorts } from './RulesShare.ts';
 import { TOKEN_POLL_MS, TokenShare, type TokenSharePorts } from './TokenShare.ts';
 
@@ -94,7 +95,8 @@ export class SceneShare {
     const ownerOf = ownerIn(seats, store);
     const mine = seats === undefined ? null : new MineShare({ onlinePlayers: () => seats.onlinePlayers(), ownerOf }, (body, to) => ports.send(body, to));
     this.mine = mine;
-    this.tokens = new TokenShare(store, ports, (listed) => mine?.setList(listed));
+    // The initiative list shows the players' look-alike numbers too: it follows them as they change
+    this.tokens = new TokenShare(store, { ...ports, numbersChanged: () => this.layers.update() }, (listed) => mine?.setList(listed));
     const rulers = (): RulerPaths => dragRulerPaths(store.getState(), ports.gmDragRuler?.() ?? null, this.moves.dragStarts());
     this.live = ports.sendLive === undefined ? null : new LiveShare(store, { ...ports, sendLive: (body, key) => ports.sendLive?.(body, key), rulers }, () => ({
       scene: this.tokens.listedScene,
@@ -105,7 +107,7 @@ export class SceneShare {
       shownTokens: () => this.tokens.shownIds(),
       tokenAlias: (id) => this.tokens.alias(id),
     });
-    this.layers = new MapLayerShare(store, { ...ports, mapLayers: () => ports.mapLayers?.() ?? null });
+    this.layers = new MapLayerShare(store, { ...ports, mapLayers: () => ports.mapLayers?.() ?? null, badgeOf: (tokenId) => this.tokens.badgeOf(tokenId) });
     const cursorsShown = (): boolean => ports.atlasSettings().showCursors;
     this.rules = new RulesShare(store, { ...ports, cursorsShown });
     this.moves = new PlayerMoves(store, {
@@ -116,6 +118,10 @@ export class SceneShare {
         ownerOf,
         map: this.mapSize,
         walls: sceneWalls(store.getState().objects.walls, this.scene?.lit === true, this.mapSize),
+        outOfTurn: (tokenId) => {
+          const settings = ports.atlasSettings();
+          return movesOutOfTurn(store.getState(), { movesOnTurn: settings.movesOnTurn === true, showInitiative: settings.showInitiative, definitions: ports.tokenRules?.()?.resources ?? [] }, tokenId);
+        },
       }),
     });
     this.marks = new MarkShare({ ...ports, cursorsShown }, () => this.mapSize);

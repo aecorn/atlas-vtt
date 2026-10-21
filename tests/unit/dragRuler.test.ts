@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { DragRuler } from '../../src/app/pixi/token-renderer/DragRuler';
 import type { DragRulerView } from '../../src/app/pixi/token-renderer/DragRulerView';
@@ -32,11 +33,12 @@ const pressSpace = (init: KeyboardEventInit = {}): KeyboardEvent => {
 };
 
 describe('DragRuler', () => {
-  it('measures from the snapped start to the cell the token would land in', () => {
+  it('measures from the snapped start to the cell the token would land in, and draws its end under the token', () => {
     const { ruler, view } = makeRuler();
     ruler.begin('t1', { x: 40, y: 30 });
     ruler.update({ x: 3 * CELL + 50, y: 20 });
-    expect(view.draw).toHaveBeenLastCalledWith([center(0, 0), center(3, 0)], '15ft');
+    expect(view.draw).toHaveBeenLastCalledWith([center(0, 0), { x: 3 * CELL + 50, y: 20 }], '15ft');
+    expect(ruler.path()?.points).toEqual([center(0, 0), center(3, 0)]);
     ruler.end();
   });
 

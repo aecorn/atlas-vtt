@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { parseGmMessage, sheetBase, sheetItemKeys, type BookStatblock, type SheetRaw } from '../../../../src/app/online/protocol/index.ts';
 import { BOOK_POLL_MS, REFUSAL_BOOK_MS } from '../../../../src/app/online/gm/book/BookShare.ts';

@@ -45,12 +45,16 @@ function abilityParts(shape: EntryShape | undefined): AbilityPart[] {
   }).slice(0, MAX_ABILITY_PARTS);
 }
 
-/** The abilities of one list as the note holds them, each named by its key among the list's items (`entryItemKeys`). */
+/** The abilities of one list as the note holds them, references filled in, each named by its key among the list's items as written (`entryItemKeys`). */
 function abilityEntries(build: SheetBuild, block: EntriesBlock, parts: readonly AbilityPart[]): AbilityEntry[] {
   const field = build.shown.fields.get(block.field);
   if (!field) return [];
   const shape = field.entry;
-  return keyedEntryItems(readField(build.record, field).value).map(({ item, key }): AbilityEntry => {
+  // Keys name the note's items as written; what shows is the item with its references filled in
+  const shown = build.shown.reader(field.key);
+  const shownList = Array.isArray(shown) ? shown : [shown];
+  return keyedEntryItems(readField(build.record, field).value).map(({ key, index }): AbilityEntry => {
+    const item = shownList[index] ?? null;
     const record = item !== null && typeof item === 'object' && !Array.isArray(item) ? item : {};
     const values = parts.flatMap((part): [string, SheetRaw][] => {
       const value = record[part.key] === undefined ? undefined : parseSheetRaw(record[part.key]);

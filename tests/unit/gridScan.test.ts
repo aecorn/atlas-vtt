@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GridScanHost } from '../../src/app/pixi/gridAlignment/GridScanLayer';
 import type { PixiRendererOrchestrator } from '../../src/app/PixiRendererOrchestrator';

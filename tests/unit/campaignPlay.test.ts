@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { App } from 'obsidian';
 import { CampaignPlay } from '../../src/app/campaigns/campaignPlay';

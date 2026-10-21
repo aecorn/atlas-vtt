@@ -6,7 +6,8 @@ import type { CampaignService } from '../../../campaigns/CampaignService';
 import { viewOfRules } from '../../../gameSystems/rulesView';
 import { vanillaSystemSettings } from '../../../gameSystems/systemRules';
 import { resourceFieldSuggestions } from '../../../resources/resourceFieldSuggestions';
-import { initiativeFieldSuggestions } from '../../../initiative/initiativeFieldSuggestions';
+import { useModifierFieldOffer } from '../collection-settings/useModifierFieldOffer';
+import type { StatblockTemplate } from '../../../statblocks/model/templateTypes';
 import { AssetService } from '../../../services/AssetService';
 import { SettingsService } from '../../../services/SettingsService';
 import { deleteSystemPreset } from '../../../services/systemPresetDeletion';
@@ -26,6 +27,8 @@ import { usePlayedCollections } from './usePlayedCollections';
  * one it has the rules' tabs alone (`RULES_TABS`): no default widgets, creature filters or loot.
  */
 const NO_SYSTEM_TABS: readonly SettingsTab[] = ['system'];
+/** A campaign names no statblock roles: its fields come from the statblocks of the collections it plays. */
+const NO_TEMPLATES: readonly StatblockTemplate[] = [];
 
 interface CampaignRulesDialogProps {
   app: App;
@@ -52,6 +55,7 @@ export function CampaignRulesDialog({ app, campaign, service, onClose, initialTa
   const collections = usePlayedCollections(app, campaign, offersFields);
   const creatures = useCollectionCreatures(app, AssetService.getInstance(app), collections, offersFields);
   const statblockRecords = creatures.creatures.map((creature) => creature.fields);
+  const modifierFields = useModifierFieldOffer(app, NO_TEMPLATES, creatures.creatures, offersFields);
 
   // Read once, as the dialog opens: a save made elsewhere meanwhile does not take the GM's edits away.
   const opened = useRef({ system: campaign.system, presets: systemPresets.presets });
@@ -96,6 +100,7 @@ export function CampaignRulesDialog({ app, campaign, service, onClose, initialTa
       canSave={canSave}
       onSave={save}
       onClose={onClose}
+      size="fullscreen"
     >
       <RulesSettingsTabs
         tabs={hasSystem ? RULES_TABS : NO_SYSTEM_TABS}
@@ -109,7 +114,8 @@ export function CampaignRulesDialog({ app, campaign, service, onClose, initialTa
         none={{ summary: t('campaign.systemNoneSummary'), isActive: !hasSystem, onSelect: () => setHasSystem(false) }}
         lightingOn={lightingOn}
         fieldSuggestions={resourceFieldSuggestions([], statblockRecords)}
-        initiativeFieldSuggestions={initiativeFieldSuggestions([], statblockRecords)}
+        initiativeFieldSuggestions={modifierFields.suggestions}
+        modifierStatblocks={modifierFields.statblocks}
       />
     </SettingsDialog>
   );

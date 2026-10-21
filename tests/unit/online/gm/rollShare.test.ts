@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { EventEmitter } from 'node:events';
 import { DEFAULT_DICE_RULES } from '../../../../src/app/gameSystems/diceRules';
 import type { GmMessage } from '../../../../src/app/online/protocol/index.ts';

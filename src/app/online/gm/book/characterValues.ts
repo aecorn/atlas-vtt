@@ -13,14 +13,14 @@ export type CharacterResourceEdit = Extract<ResourceEdit, { readonly kind: 'char
  * holds it shows the value, and no undo step is made. Returns the current value the campaign keeps
  * then, clamped to the value's range, or null when it is refused: no campaign is played, the
  * campaign cannot be changed, the token was placed from no player character, or the campaign keeps
- * no such value of it.
+ * no such value of it (a tracked number starts where its sheet offered it).
  */
 export function writeCharacterValue(app: App, edit: CharacterResourceEdit): number | null {
   const sync = PartySync.forApp(app);
   const campaignId = sync === undefined ? null : CampaignPlay.forApp(app).playing();
   if (sync === undefined || campaignId === null) return null;
   const characterId = sync.characterOf(edit.placed);
-  const value = characterId === null ? undefined : sync.value(campaignId, characterId, edit.key);
+  const value = characterId === null ? undefined : sync.value(campaignId, characterId, edit.key) ?? edit.tracked;
   if (characterId === null || value === undefined) return null;
   const { current } = withCurrent(value, edit.current);
   if (current === value.current) return current;

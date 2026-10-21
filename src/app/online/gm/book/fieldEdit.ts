@@ -5,13 +5,14 @@ import { withHeaderFields } from '../../../statblocks/model/templateHeader';
 import type { FieldValue, TemplateField } from '../../../statblocks/model/templateTypes';
 import { picksChoice } from '../../../statblocks/values/choicePicks';
 import { textProblem, valueMisfit } from '../../../statblocks/values/valueFit';
+import { countersAfterEdit } from './counterEdit.ts';
 import { playerAccess } from './playerAccess.ts';
 import {
   amongOptions, clears, editableTemplate, inOptionOrder, isDice, isLine, isPlainList, isScalar, sentFields, writtenValue, type CheckedEdit, type EditInputs,
 } from './statblockChecks.ts';
 
 /** The types of value a page changes; any other field is never changed from a page. */
-const EDITED = new Set<TemplateField['type']>(['text', 'markdown', 'number', 'rating', 'dice', 'choice', 'list', 'scores', 'pairs']);
+const EDITED = new Set<TemplateField['type']>(['text', 'markdown', 'number', 'rating', 'dice', 'choice', 'list', 'scores', 'pairs', 'counters']);
 
 /** The types whose stored value a Table may show as rows of cells, and so the only ones a cell edit changes. */
 const TABLED = new Set<TemplateField['type']>(['scores', 'pairs', 'list']);
@@ -54,6 +55,11 @@ function withCell(stored: FieldValue | undefined, [row, column]: readonly [numbe
 
 /** The value a field holds once the edit is in (undefined: its key is deleted), or null where the edit does not fit it. */
 function newValue(field: TemplateField, stored: FieldValue | undefined, message: BookFieldMessage): { readonly value: FieldValue | undefined } | null {
+  // Counters change only their uses, the whole list at once; they are never cleared or edited cell by cell.
+  if (field.type === 'counters') {
+    const value = message.cell === undefined ? countersAfterEdit(field, stored, message.value) : null;
+    return value === null ? null : { value };
+  }
   if (message.cell !== undefined) {
     if (!TABLED.has(field.type)) return null;
     const value = withCell(stored, message.cell, message.value);
@@ -70,7 +76,8 @@ function newValue(field: TemplateField, stored: FieldValue | undefined, message:
  * field for editing and the template still lets players change it, the base they name is the value
  * the note holds now (with what this GM side wrote and has not seen read back), and the value fits
  * the field. A value of null, '' or [] deletes the key; a cell changes one value of a table, whose
- * whole new value is written against the old. Null where anything of it is refused.
+ * whole new value is written against the old; Counters change only their uses (`countersAfterEdit`). Null where
+ * anything of it is refused.
  */
 export function checkFieldEdit(inputs: EditInputs, message: BookFieldMessage): CheckedEdit | null {
   const template = editableTemplate(inputs);

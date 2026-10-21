@@ -8,29 +8,10 @@ import type { WorldMapChoice } from './libraryPictures';
 import { MapArt } from './MapArt';
 import { PartyFaces } from './PartyFaces';
 import { useWorldMapArtwork } from './useWorldMapArtwork';
-import { formatRelativeTime, type RelativeTimePhrases } from './relativeTime';
+import { campaignActivity } from './relativeTime';
 import type { PartyFace } from './useCampaignParties';
 import { GameIcon } from '../GameIcon';
 import { WIDGET_ICON_PATHS } from '../../../types/widgetIcons';
-
-const PLAYED: RelativeTimePhrases = {
-  justNow: 'campaign.playedJustNow',
-  minutes: 'campaign.playedMinutesAgo',
-  hours: 'campaign.playedHoursAgo',
-  days: 'campaign.playedDaysAgo',
-};
-
-const CREATED: RelativeTimePhrases = {
-  justNow: 'campaign.createdJustNow',
-  minutes: 'campaign.createdMinutesAgo',
-  hours: 'campaign.createdHoursAgo',
-  days: 'campaign.createdDaysAgo',
-};
-
-/** "Last played 3d ago", or when it was made for a campaign never played. */
-export const campaignActivity = (campaign: Campaign): string => (campaign.lastPlayed !== undefined
-  ? formatRelativeTime(campaign.lastPlayed, PLAYED)
-  : formatRelativeTime(campaign.createdAt, CREATED));
 
 /** Says that this device plays the campaign. */
 export function PlayingMark(): React.JSX.Element {

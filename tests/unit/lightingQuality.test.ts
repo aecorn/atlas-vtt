@@ -1,7 +1,8 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App, Setting } from 'obsidian';
 import { LIGHTING_QUALITY, bouncesOn, isLightingQualityLevel } from '../../src/app/lighting/lightingQuality';
-import { worldTexel } from '../../src/app/lighting/lightingConstants';
+import { TILE_RAYS, worldTexel } from '../../src/app/lighting/lightingConstants';
 import { LIGHTING_QUALITY_STORAGE_KEY } from '../../src/app/services/deviceSettings';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { lightingSettingsSections } from '../../src/app/settings/lightingSettingsSection';
@@ -32,6 +33,12 @@ describe('lighting quality levels', () => {
     expect(bouncesOn(LIGHTING_QUALITY.balanced, map(6144))).toBe(true);
     expect(bouncesOn(LIGHTING_QUALITY.balanced, map(8192))).toBe(false);
     expect(bouncesOn(LIGHTING_QUALITY.saver, map(512))).toBe(false);
+  });
+
+  it('trace every ray at high and fewer across a flame at the lower levels', () => {
+    expect(LIGHTING_QUALITY.high.tileRays).toBe(TILE_RAYS);
+    expect(LIGHTING_QUALITY.balanced.tileRays).toBe(16);
+    expect(LIGHTING_QUALITY.saver.tileRays).toBe(8);
   });
 
   it('reads only the levels it knows', () => {

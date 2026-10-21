@@ -1,7 +1,6 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import {
-  parseSheetRaw,
+  parseSheetRaw, refilledBy,
   fitsPlayerFrame, MAX_ABILITIES, MAX_ABILITY_COMPONENTS, MAX_ABILITY_PARTS, MAX_ABILITY_TABS, MAX_FIELD_KEY, MAX_FIELD_TEXT, MAX_SHEET_CHARS, MAX_SHEET_DEPTH,
   MAX_SHEET_KEYS, MAX_SHEET_LIST, MAX_SHEET_NODES, MAX_SHEET_OPTIONS, MAX_SHEET_TEXT, MAX_TABLE_COLUMNS, MAX_TABLE_ROWS, MAX_TOKEN_VALUE, parseBookMessage,
   parseBookStatblock, parseGmMessage, parsePlayerBookMessage, parsePlayerMessage, sheetBase, sheetItemKeys,
@@ -16,7 +15,7 @@ const plain = (opening: string, extra: Partial<SheetValue> = {}): SheetValue => 
 const value = (shown: SheetValue): SheetNode => ({ k: 'value', value: shown });
 const entry = (name: string, extra: Partial<AbilityEntry> = {}): AbilityEntry => ({ key: sheetBase(name), name, text: { opening: '' }, parts: {}, ...extra });
 const component = (extra: Partial<AbilityComponent> = {}): AbilityComponent => ({ id: 'blk1', name: 'Actions', access: 'edit', parts: [], tabs: [{ label: null, list: 'actions', entries: [] }], ...extra });
-const sheet = (extra: Partial<BookStatblock> = {}): BookStatblock => ({ editable: true, displayName: null, sigils: {}, blocks: [], abilities: [], ...extra });
+const sheet = (extra: Partial<BookStatblock> = {}): BookStatblock => ({ editable: true, displayName: null, sigils: {}, blocks: [], abilities: [], refills: [], ...extra });
 const nodes = (count: number, make: (index: number) => SheetNode = () => ({ k: 'divider' })): SheetNode[] => Array.from({ length: count }, (_, index) => make(index));
 const nested = (depth: number): SheetNode => (depth <= 1 ? { k: 'section', heading: null, nodes: [] } : { k: 'section', heading: null, nodes: [nested(depth - 1)] });
 const range = (count: number, prefix = 'o'): string[] => Array.from({ length: count }, (_, index) => `${prefix}${index}`);
@@ -340,5 +339,42 @@ describe('the rolls a sheet offers', () => {
     expect(parseBookStatblock(sheet([value({ roll: 3 })]))).toBeUndefined();
     expect(parseBookStatblock(sheet([table({ workedRolls: [['+0']] })]))).toBeUndefined();
     expect(parseBookStatblock(sheet([table({ rolls: [['+0', '+2'], ['+1', '+1']] })]))).toBeUndefined();
+  });
+});
+
+describe('a Counters block and the sheet\'s refills', () => {
+  const sheet = (node: unknown, extra: Record<string, unknown> = {}): unknown => ({ editable: true, displayName: null, sigils: {}, blocks: [node], abilities: [], ...extra });
+  const counters = (rows: unknown[]): unknown => ({ k: 'counters', label: 'Spell slots', counters: rows, field: null });
+
+  it('carries its rows with the refill and the formula that give uses back, and the refills the template names for the whole sheet', () => {
+    const parsed = parseBookStatblock(sheet(counters([{ name: '1st level', max: 4, used: 1, reset: 'Long rest' }, { name: 'Wand', max: 7, used: 3, reset: 'Dawn', regain: '1d6+1' }, { name: 'Ki', max: 5, used: 0 }]), {
+      refills: [{ name: 'Short rest', includes: [] }, { name: 'Long rest', includes: ['Short rest'] }, { name: 'Dawn', includes: [] }],
+    }));
+    expect(parsed?.blocks[0]).toEqual({ k: 'counters', label: 'Spell slots', field: null, counters: [
+      { name: '1st level', max: 4, used: 1, reset: 'Long rest', regain: null }, { name: 'Wand', max: 7, used: 3, reset: 'Dawn', regain: '1d6+1' }, { name: 'Ki', max: 5, used: 0, reset: null, regain: null },
+    ] });
+    expect(parsed?.refills).toEqual([{ name: 'Short rest', includes: [] }, { name: 'Long rest', includes: ['Short rest'] }, { name: 'Dawn', includes: [] }]);
+    // A GM's Atlas with recovery buttons sends none: the sheet then has none
+    expect(parseBookStatblock(sheet(counters([])))).not.toHaveProperty('refills');
+    expect(parseBookStatblock(sheet(counters([]), { refills: [] }))?.refills).toEqual([]);
+    expect(refilledBy({ name: 'Long rest', includes: ['Short rest'] }, { name: 'Ki', max: 5, used: 2, reset: 'Short rest', regain: null })).toBe(true);
+    expect(refilledBy({ name: 'Short rest', includes: [] }, { name: '1st level', max: 4, used: 1, reset: 'Long rest', regain: null })).toBe(false);
+  });
+
+  it('refuses rows that use more than they have, maximums out of range, resets or formulas that are no lines, and refills named twice or too many', () => {
+    expect(parseBookStatblock(sheet(counters([{ name: 'Ki', max: 2, used: 3 }])))).toBeUndefined();
+    expect(parseBookStatblock(sheet(counters([{ name: 'Ki', max: 1.5, used: 0 }])))).toBeUndefined();
+    expect(parseBookStatblock(sheet(counters([{ name: 'Ki', max: 1001, used: 0 }])))).toBeUndefined();
+    expect(parseBookStatblock(sheet(counters([{ name: 'Ki', max: 2, used: 0, reset: 3 }])))).toBeUndefined();
+    expect(parseBookStatblock(sheet(counters([{ name: 'Ki', max: 2, used: 0, regain: 'x'.repeat(101) }])))).toBeUndefined();
+    expect(parseBookStatblock(sheet(counters(Array.from({ length: 25 }, (_, i) => ({ name: `R${i}`, max: 1, used: 0 })))))).toBeUndefined();
+    expect(parseBookStatblock(sheet(counters([]), { refills: [{ name: 'Dawn', includes: [] }, { name: 'Dawn', includes: [] }] }))).toBeUndefined();
+    expect(parseBookStatblock(sheet(counters([]), { refills: Array.from({ length: 9 }, (_, i) => ({ name: `R${i}`, includes: [] })) }))).toBeUndefined();
+  });
+
+  it('reads a player\'s refill by its name', () => {
+    expect(parsePlayerBookMessage({ t: 'book-refill', refill: 'Long rest' })).toEqual({ t: 'book-refill', refill: 'Long rest' });
+    expect(parsePlayerBookMessage({ t: 'book-refill', refill: '' })).toBeNull();
+    expect(parsePlayerBookMessage({ t: 'book-refill' })).toBeNull();
   });
 });

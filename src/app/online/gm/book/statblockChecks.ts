@@ -80,7 +80,7 @@ export function sentFields(statblock: BookStatblock): SheetField[] {
       else if (node.k === 'tabs') for (const tab of node.tabs) walk(tab.nodes);
       else if (node.k === 'value') ofValue(node.value);
       else if (node.k === 'metric') node.values.forEach(ofValue);
-      else if ((node.k === 'table' || node.k === 'track') && node.field !== null) fields.push(node.field);
+      else if ((node.k === 'table' || node.k === 'track' || node.k === 'counters') && node.field !== null) fields.push(node.field);
     }
   };
   Object.values(statblock.sigils).forEach(ofValue);

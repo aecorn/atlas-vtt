@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { hotkeyFromEvent, formatHotkey, matchesHotkey, canRunMapHotkeys, canShareHotkey, availableHotkeys, MAP_HOTKEYS } from '../../src/app/keyboard/mapHotkeys';

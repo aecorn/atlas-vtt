@@ -1,9 +1,11 @@
-// @vitest-environment node
 import type { GmMessage } from '../../../../src/app/online/protocol/index.ts';
+import type { DiceSet, RollingDice } from '../../../../src/app/types/diceSetTypes';
+import { parseSharedRoll } from '../../../../src/app/online/protocol/index.ts';
 import type { DiceRules } from '../../../../src/app/types/diceRulesTypes';
 import type { TokenEntity } from '../../../../src/app/types';
 import { describe, expect, it } from 'vitest';
-import { Ownership, readOwnership } from '../../../../src/app/online/gm/ownership.ts';
+import { Ownership } from '../../../../src/app/online/gm/ownership.ts';
+import { boundOwnership } from './fakeSeats.ts';
 import { playerFormula, rollableFormula } from '../../../../src/app/online/gm/PlayerRolls.ts';
 import { TOKEN_INTERVAL_MS } from '../../../../src/app/online/gm/TokenShare.ts';
 import { DICE_TOOL, realDice, type DiceToolClass, type RealDice } from './realDice.ts';
@@ -20,8 +22,8 @@ const TOKENS: TokenEntity[] = [
 ];
 
 /** A shared scene with the hero (Ana's) and the ogre, whose dice are Atlas's real tool. */
-async function table(rules: DiceRules, random: () => number): Promise<ShareHarness & RealDice & { readonly scene: string; readonly alias: (x: number) => string }> {
-  const owners = new Ownership(readOwnership(undefined), () => undefined);
+async function table(rules: DiceRules | RollingDice, random: () => number): Promise<ShareHarness & RealDice & { readonly scene: string; readonly alias: (x: number) => string }> {
+  const owners = boundOwnership([{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }]);
   owners.welcome([{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }]);
   const state = sceneState({ objects: { ...sceneState().objects, tokens: Object.fromEntries(TOKENS.map((entry) => [entry.id, entry])) } });
   const share = shareHarness(state, ART, owners);
@@ -146,6 +148,72 @@ describe('players\' private rolls and roll buttons', () => {
 });
 
 describe('a bonus from a player\'s sheet', () => {
+  const campaign = { dice: [{ count: 1, sides: 10, name: 'Campaign', colour: '#8844cc' }], crit: 'natural' as const };
+  const character: DiceSet = { id: 'personal', name: 'Personal dice', builtIn: false, dice: [
+    { count: 1, sides: 12, name: 'Sun ☀', colour: '#ffaa00' },
+    { count: 1, sides: 12, name: 'Moon', colour: '#3366ff' },
+  ], crit: 'doubles' };
+
+  it('uses the owned character default in public and private and carries its names and colours to players', async () => {
+    const gm = await table(campaign, () => 0.5);
+    Object.assign(gm.dice, { setFor: (token: TokenEntity) => token.id === 'hero' ? character : undefined });
+    gm.share.receive(ANA, { t: 'roll', scene: gm.scene, formula: '+2', token: gm.alias(1) });
+    expect(gm.rolled[0]?.formula).toBe('1d12+1d12+2');
+    const want = character.dice.map(({ sides, name, colour }) => ({ max: sides, name, colour }));
+    expect(gm.rolled[0]?.rolls).toMatchObject(want);
+    expect(parseSharedRoll(rollsSent(gm.sent)[0]?.result)?.rolls).toMatchObject(want);
+    gm.share.receive(ANA, { t: 'roll', scene: gm.scene, formula: '-1', token: gm.alias(1), mode: 'gm' });
+    expect(gm.logged.at(-1)?.roll.formula).toBe('1d12+1d12-1');
+    expect(parseSharedRoll(gm.logged.at(-1)?.roll)?.rolls).toMatchObject(want);
+  });
+
+  it('gives explicit sheet pools the owned character appearance in public and private', async () => {
+    const gm = await table(campaign, () => 0.5);
+    Object.assign(gm.dice, { setFor: () => character });
+    const want = character.dice.map(({ sides, name, colour }) => ({ max: sides, name, colour }));
+    gm.share.receive(ANA, { t: 'roll', scene: gm.scene, formula: 'd12+d12+d6+2', token: gm.alias(1), setAppearance: true });
+    expect(gm.rolled[0]?.formula).toBe('d12+d12+d6+2');
+    expect(gm.rolled[0]?.rolls.slice(0, 2)).toMatchObject(want);
+    expect(gm.rolled[0]?.rolls[2]).not.toHaveProperty('name');
+    expect(parseSharedRoll(rollsSent(gm.sent)[0]?.result)?.rolls.slice(0, 2)).toMatchObject(want);
+    gm.share.receive(ANA, { t: 'roll', scene: gm.scene, formula: '2d12-1', token: gm.alias(1), mode: 'gm', setAppearance: true });
+    expect(gm.logged.at(-1)?.roll.formula).toBe('2d12-1');
+    expect(gm.logged.at(-1)?.roll.rolls).toMatchObject(want);
+  });
+
+  it('uses campaign appearance only for a matching pool, without borrowing another character’s set', async () => {
+    const gm = await table(campaign, () => 0.5);
+    Object.assign(gm.dice, { setFor: () => character });
+    gm.share.receive(BEN, { t: 'roll', scene: gm.scene, formula: 'd12+d12', token: gm.alias(1), setAppearance: true });
+    expect(gm.rolled[0]?.rolls.some((die) => die.name || die.colour)).toBe(false);
+    gm.share.receive(BEN, { t: 'roll', scene: gm.scene, formula: 'd10+d8', token: null, setAppearance: true });
+    expect(gm.rolled[1]?.rolls).toMatchObject([{ name: 'Campaign', colour: '#8844cc' }, { max: 8 }]);
+    expect(gm.rolled[1]?.rolls[1]).not.toHaveProperty('colour');
+  });
+
+  it('inherits campaign defaults without a sheet override, and never borrows another player’s override', async () => {
+    const gm = await table(campaign, () => 0.5);
+    Object.assign(gm.dice, { setFor: () => character });
+    gm.share.receive(BEN, { t: 'roll', scene: gm.scene, formula: '+2', token: gm.alias(1) });
+    expect(gm.rolled[0]?.rolls).toMatchObject([{ max: 10, name: 'Campaign', colour: '#8844cc' }]);
+    delete (gm.dice as { setFor?: unknown }).setFor;
+    gm.share.receive(ANA, { t: 'roll', scene: gm.scene, formula: '+2', token: gm.alias(1) });
+    expect(gm.rolled[1]?.rolls).toMatchObject([{ max: 10, name: 'Campaign', colour: '#8844cc' }]);
+  });
+
+  it('keeps explicit dice ahead of character and campaign defaults in public and private', async () => {
+    const gm = await table(campaign, () => 0.5);
+    Object.assign(gm.dice, { setFor: () => character });
+    gm.share.receive(ANA, { t: 'roll', scene: gm.scene, formula: '1d8+2', token: gm.alias(1) });
+    expect(gm.rolled[0]?.formula).toBe('1d8+2');
+    expect(gm.rolled[0]?.rolls).toEqual([{ die: 'd8', max: 8, value: 5 }]);
+    gm.share.receive(ANA, { t: 'roll', scene: gm.scene, formula: '1d12+2', token: gm.alias(1), mode: 'gm' });
+    expect(gm.logged.at(-1)?.roll.rolls).toMatchObject([{ die: 'd12', max: 12 }]);
+    expect(gm.logged.at(-1)?.roll.rolls[0]).not.toHaveProperty('name');
+    expect(gm.logged.at(-1)?.roll.rolls[0]).not.toHaveProperty('colour');
+  });
+
+
   it('is completed with the map\'s dice, in the open and in private, as a bonus clicked on a statblock is', async () => {
     const gm = await table({ defaultRoll: '2d12', crit: 'natural' }, () => 0.5);
     gm.share.receive(ANA, { t: 'roll', scene: gm.scene, formula: '+2', token: gm.alias(1), flavor: 'Agility' });

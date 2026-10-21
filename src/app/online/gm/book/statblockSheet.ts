@@ -3,10 +3,11 @@ import type { ResourceDefinition, ResourceValue } from '../../../resources/resou
 import { evaluateCondition } from '../../../statblocks/expressions/conditions';
 import type { ResolvedStatblock } from '../../../statblocks/model/resolvedTypes';
 import { withHeaderFields } from '../../../statblocks/model/templateHeader';
-import type { StatblockTemplate, TemplateField } from '../../../statblocks/model/templateTypes';
+import type { StatblockTemplate } from '../../../statblocks/model/templateTypes';
 import { sheetState } from '../../../statblocks/render/sheetState';
-import { readerFor, type FieldRecord } from '../../../statblocks/values/fieldValues';
-import { playerAccess } from './playerAccess.ts';
+import { readerFor } from '../../../statblocks/values/fieldValues';
+import { shownRecord } from './playerAccess.ts';
+import { trackedSheetValues } from './trackedSheet.ts';
 import { SheetBudget } from './sheetBudget.ts';
 import type { SheetBuild } from './sheetFields.ts';
 import { fittedNodes, sheetNodes, type SheetWalk } from './sheetNodes.ts';
@@ -26,16 +27,6 @@ export interface StatblockSheetInput {
 export interface DrawnStatblock {
   readonly statblock: BookStatblock | null;
   readonly texts: readonly SheetTextAsset[];
-}
-
-/**
- * The note's values a player may see: those of the template's fields (by their key or one they had
- * before a rename) that are not hidden from players. Everything else the note holds (its other
- * keys, tags, aliases, the template it names) is never read for them.
- */
-function shownRecord(record: FieldRecord, template: StatblockTemplate, fields: readonly TemplateField[]): FieldRecord {
-  const keys = fields.filter((field) => playerAccess(template, field.key) !== 'hidden').flatMap((field) => [field.key, ...(field.formerKeys ?? [])]);
-  return Object.fromEntries(keys.filter((key) => Object.hasOwn(record, key)).map((key) => [key, record[key]]));
 }
 
 /** The template a native statblock is drawn with for its player, and whether they may change it; null for a statblock of Fantasy Statblocks or the auto template. */
@@ -74,12 +65,14 @@ export function statblockSheet(input: StatblockSheetInput, texts: SheetTexts = n
   const record = input.resolved.fields;
   const shown = shownRecord(record, template, fields);
   const reader = readerFor(record, fields);
+  // The numbers the template tracks are resources of the character too, held or where they start
+  const tracked = trackedSheetValues(input.resolved, input.definitions, input.resources);
   const build: SheetBuild = {
     template, record, editable, texts,
-    shown: sheetState({ template, record: shown, mode: 'view' }),
-    editing: sheetState({ template, record: shown, mode: 'editing' }),
-    definitions: input.definitions,
-    resources: input.resources ?? {},
+    shown: sheetState({ template, record: shown, mode: 'view', resources: input.definitions }),
+    editing: sheetState({ template, record: shown, mode: 'editing', resources: input.definitions }),
+    definitions: [...input.definitions, ...tracked.map((each) => each.definition)],
+    resources: { ...input.resources, ...Object.fromEntries(tracked.map((each) => [each.definition.key, each.value])) },
     budget: new SheetBudget(),
     holds: (block) => block.showWhen === undefined || evaluateCondition(block.showWhen, reader),
   };

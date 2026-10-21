@@ -41,6 +41,7 @@ import type { LightingQualitySource } from '../../lighting/lightingQuality';
 import { glideWayIsClear } from '../../lighting/glideWay';
 import type { ShownPlaces } from '../../lighting/shownPlaces';
 import { followShownPlaces } from '../../lighting/shownTokens';
+import { mapTokens } from '../../tokens/offMap';
 
 export interface LightingControllerDeps {
   viewport: Viewport;
@@ -196,7 +197,7 @@ export class LightingController {
   /** How the players perceive each token, for their frame and for session view; sight hides nothing in an unlit scene. */
   playerSight(): TokenPerception | undefined {
     const state = this.deps.store.getState();
-    return playerTokenSight(this.renderer, state.objects.tokens, { conditions: this.sightRules().conditions, held: heldForSight(state) }, this.perceptions);
+    return playerTokenSight(this.renderer, mapTokens(state.objects), { conditions: this.sightRules().conditions, held: heldForSight(state) }, this.perceptions);
   }
 
   /** The senses and conditions of the map's collection, and how each token perceives. */

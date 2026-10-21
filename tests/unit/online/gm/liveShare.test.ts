@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { LIVE_INTERVAL_MS, parseGmMessage, type LiveMessage, type SharedToken } from '../../../../src/app/online/protocol/index.ts';
 import { describe, expect, it } from 'vitest';
 import { LiveShare } from '../../../../src/app/online/gm/LiveShare.ts';

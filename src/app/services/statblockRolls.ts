@@ -54,6 +54,8 @@ export interface OffMapRolls {
   show(result: DiceRollResult, muted: boolean): void;
   /** The dice a roll is made with, by `set` where one is given, else the collection's: what advantage can do. */
   rollingDice?(set?: RollOptions['set']): RollingDice;
+  /** The surface lies over every map (the encounter builder), so a map's roll is shown here as well. */
+  coversMaps?: boolean;
 }
 
 interface DiceToolLike {
@@ -151,7 +153,7 @@ function rollWithSource(
     const origin = sameView ? rollOrigin(context, source.tokenId) : undefined;
     const result = options ? map.tool.rollDice(formula, rollSource, origin, options)
       : origin ? map.tool.rollDice(formula, rollSource, origin) : map.tool.rollDice(formula, rollSource);
-    if (result && !map.onScreen) offMap?.show(result, true);
+    if (result && (!map.onScreen || offMap?.coversMaps)) offMap?.show(result, true);
     return result;
   }
   if (!offMap) return null;

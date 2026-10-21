@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { produce } from 'immer';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ALL_PLAYERS, parseGmMessage, type BookCharacter } from '../../../../src/app/online/protocol/index.ts';

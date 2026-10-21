@@ -10,6 +10,7 @@ import { applyNoteScroll, readNoteViewState, toOpenViewState } from './noteViewS
 import { t } from '../i18n';
 import { findEditorHeading, findRenderedHeading, headingLine } from './noteHeadings';
 import { alignHeading, holdHeadingInView } from './headingScroll';
+import { isModKey } from '../keyboard/modKey';
 
 // Styles imported via styles/main.scss → note-preview-window.scss
 
@@ -188,6 +189,9 @@ export class NotePreviewWindow {
     // with the preview. We only call stopPropagation (not preventDefault)
     // so that the underlying editor (CodeMirror etc.) still receives the event.
     const stopKeyPropagation = (e: KeyboardEvent) => {
+        // The Mod key alone runs no hotkey, and whatever shows while it is held (statblock and note
+        // previews) must hear it released: a pinned note that kept it left them open for good.
+        if (isModKey(e)) return;
         e.stopPropagation();
         
         // Auto-pin when user starts typing (but not for modifier keys, arrows, etc.)

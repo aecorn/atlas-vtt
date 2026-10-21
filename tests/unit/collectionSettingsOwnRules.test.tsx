@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -181,7 +182,7 @@ describe('the collection settings modal and the initiative rules', () => {
     expect(within(cairnRow()).queryByText('Edited')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Default Widgets' }));
     expect(screen.queryByLabelText('Initiative Roll')).toBeNull();
-    expect(screen.getByText('Acts First')).toBeTruthy();
+    expect(screen.getByText('Sides', { selector: 'label' })).toBeTruthy();
     await save();
     expect(saved()).toHaveProperty('initiative', undefined);
   });

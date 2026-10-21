@@ -61,3 +61,17 @@ export function parseBookAbilityMessage(value: Record<string, unknown>): BookAbi
   if (value.op !== 'add' || (value.after !== null && !isSheetKey(value.after))) return null;
   return { t: 'book-ability', op: 'add', list, after: value.after, entry };
 }
+
+/**
+ * A player takes one of their sheet's refills ("Long rest"): the GM's Atlas gives back the uses of
+ * every counter on the sheet that refill names, rolling the rows that regain a formula.
+ */
+export interface BookRefillMessage {
+  readonly t: 'book-refill';
+  readonly refill: string;
+}
+
+export function parseBookRefillMessage(value: Record<string, unknown>): BookRefillMessage | null {
+  const refill = bookLine(value.refill, MAX_BOOK_TITLE);
+  return refill === null ? null : { t: 'book-refill', refill };
+}

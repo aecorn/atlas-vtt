@@ -1,6 +1,8 @@
 import { MAX_ABILITY_COMPONENTS, MAX_ABILITY_TABS, parseComponent, type AbilityComponent } from './bookAbilities.ts';
 import { isResourceKey } from './bookCharacter.ts';
+import { parseStatblockRest, type StatblockRest } from './bookRest.ts';
 import { MAX_FORMULA } from './dice.ts';
+import { MAX_COUNTERS, MAX_REFILLS, parseCounter, parseRefill, type CounterRefill, type SheetCounter } from './sheetCounters.ts';
 import { bookLine, MAX_BOOK_TITLE } from './bookText.ts';
 import { isRecord } from './shape.ts';
 import {
@@ -54,6 +56,7 @@ export type SheetNode =
   /** `worked`: a table's worked-out rows (a modifier under each score), each labelled by `workedLabels` where the GM names them. */
   | { readonly k: 'table'; readonly label: string | null; readonly columns: readonly string[]; readonly rows: readonly (readonly (string | null)[])[]; readonly worked: readonly (readonly (string | null)[])[]; readonly workedLabels?: readonly string[]; readonly rolls?: readonly (readonly (string | null)[])[]; readonly workedRolls?: readonly (readonly (string | null)[])[]; readonly field: SheetField | null }
   | { readonly k: 'track'; readonly label: string | null; readonly look: 'boxes' | 'gauge'; readonly counts: 'down' | 'up'; readonly current: number; readonly max: number; readonly resource: string | null; readonly field: SheetField | null }
+  | { readonly k: 'counters'; readonly label: string | null; readonly counters: readonly SheetCounter[]; readonly field: SheetField | null }
   | { readonly k: 'divider' };
 
 /** The parts of the header the sheet draws as sigils and plates beside the portrait. */
@@ -67,14 +70,31 @@ export interface SheetSigils {
 /**
  * The player's own character's statblock as the GM's Atlas draws it for them: only what the
  * template lets players see, every text worked out. `editable` is false where the template cannot
- * be read as it was written (missing, of a newer Atlas): then nothing of it may be changed.
+ * be read as it was written (missing, of a newer Atlas): then nothing of it may be changed. A player
+ * character's has its recovery buttons (`StatblockRest`).
  */
-export interface BookStatblock {
+export interface BookStatblock extends StatblockRest {
   readonly editable: boolean;
   readonly displayName: string | null;
   readonly sigils: SheetSigils;
   readonly blocks: readonly SheetNode[];
   readonly abilities: readonly AbilityComponent[];
+  /**
+   * The refills the template names for the whole sheet ("Short rest", "Long rest", "Dawn"), each a
+   * button that gives back the uses of every counter on the sheet naming it (`book-refill`). Only a
+   * statblock the player may change has any. A GM's Atlas that has recovery buttons sends none.
+   */
+  readonly refills?: readonly CounterRefill[];
+}
+
+/** The refills of a statblock, each name once; null when they are malformed. */
+function parseRefills(value: unknown, budget: SheetBudget): CounterRefill[] | null {
+  if (value === undefined) return [];
+  const refills = Array.isArray(value) && value.length <= MAX_REFILLS ? value.map(parseRefill) : null;
+  if (refills === null || refills.some((refill) => refill === null)) return null;
+  const named = refills as CounterRefill[];
+  if (new Set(named.map((refill) => refill.name)).size !== named.length) return null;
+  return spendText(budget, named.map((refill) => refill.name + refill.includes.join('')).join('')) ? named : null;
 }
 
 /** Sent to one player after every `book` and whenever it changes; null: their character has no statblock they get. */
@@ -230,6 +250,14 @@ function parseNode(value: unknown, depth: number, budget: SheetBudget): SheetNod
       if (label === undefined || resource === undefined || field === undefined || !looks || !isCount(value.current) || !isCount(value.max)) return null;
       return { k: 'track', label, look: value.look as 'boxes' | 'gauge', counts: value.counts as 'down' | 'up', current: value.current, max: value.max, resource, field };
     }
+    case 'counters': {
+      const label = optionalSheetLine(value.label);
+      const field = parseSheetField(value.field);
+      const counters = Array.isArray(value.counters) && value.counters.length <= MAX_COUNTERS ? value.counters.map(parseCounter) : null;
+      if (label === undefined || field === undefined || counters === null || counters.some((row) => row === null)) return null;
+      const rows = counters as SheetCounter[];
+      return spendText(budget, rows.map((row) => row.name + (row.reset ?? '') + (row.regain ?? '')).join('')) ? { k: 'counters', label, counters: rows, field } : null;
+    }
     case 'divider':
       return { k: 'divider' };
     default:
@@ -261,6 +289,8 @@ export function parseBookStatblock(value: unknown): BookStatblock | null | undef
   if (displayName === undefined || sigils === null || blocks === null || components === null || components.some((entry) => entry === null)) return undefined;
   const abilities = components as AbilityComponent[];
   if (new Set(abilities.map((entry) => entry.id)).size !== abilities.length) return undefined;
-  return { editable: value.editable, displayName, sigils, blocks, abilities };
+  const refills = parseRefills(value.refills, budget);
+  if (refills === null) return undefined;
+  return { editable: value.editable, displayName, sigils, blocks, abilities, ...(value.refills !== undefined && { refills }), ...parseStatblockRest(value, budget) };
 }
 

@@ -1,7 +1,9 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { Container, Text } from 'pixi.js';
 import { stubJsdomGraphics } from '../../mocks/jsdomGraphics';
-import { ResourceWheels, WHEEL_SIZE } from '../../../src/app/pixi/token-renderer/resources/ResourceWheels';
+import { ResourceWheels } from '../../../src/app/pixi/token-renderer/resources/ResourceWheels';
+import { WHEEL_SIZE } from '../../../src/app/pixi/token-renderer/resources/wheelGeometry';
 import { NAMEPLATE_HEIGHT } from '../../../src/app/pixi/token-renderer/tokenSizing';
 import { HP_RESOURCE } from '../../../src/app/resources/resourceDefinitions';
 

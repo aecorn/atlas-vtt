@@ -53,6 +53,17 @@ export function pathMidpoint(points: readonly Point[]): Point | null {
   return points[0] ?? null;
 }
 
+/** The path ending `gap` before its last point; a last segment shorter than that is left out. */
+export function shortenPathEnd(points: readonly Point[], gap: number): Point[] {
+  const end = points[points.length - 1];
+  const before = points[points.length - 2];
+  if (!end || !before) return [...points];
+  const length = Math.hypot(end.x - before.x, end.y - before.y);
+  if (length <= gap) return points.slice(0, -1);
+  const t = (length - gap) / length;
+  return [...points.slice(0, -1), { x: before.x + (end.x - before.x) * t, y: before.y + (end.y - before.y) * t }];
+}
+
 /** Accent dot marking where a measurement starts, turns or ends. */
 export function drawMeasurePoint(graphics: Graphics, color: number, point: Point): void {
   graphics.circle(point.x, point.y, POINT_RADIUS + 3).fill({ color: 0x000000, alpha: 0.3 });

@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { importUvttFile, type UvttImportDeps, type UvttImportResult, type UvttImported } from '../../src/app/import/uvtt/importUvttFile';
 import { parseUvtt } from '../../src/app/import/uvtt/parseUvtt';

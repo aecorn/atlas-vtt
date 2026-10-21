@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { Text } from 'pixi.js';
 import { afterEach, describe, expect, it, vi, type Mock } from 'vitest';
 import type { TokenFootprint } from '../../src/app/vision/measureOrigin';

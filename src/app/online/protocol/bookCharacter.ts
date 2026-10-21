@@ -1,16 +1,16 @@
 import { parseAsset, type AssetRef } from './asset.ts';
 import { bookLine, MAX_BOOK_TITLE } from './bookText.ts';
 import { isRecord } from './shape.ts';
+import { isPlainKey } from './sheetValues.ts';
 import { MAX_TOKEN_VALUE } from './tokenUI.ts';
 
-/** What a sheet holds at most: as many resources as a token shows. */
-export const MAX_SHEET_RESOURCES = 6;
+/** What a sheet holds at most: the six resources a token shows, and the numbers its statblock tracks. */
+export const MAX_SHEET_RESOURCES = 32;
 /** The longest key a sheet names a resource by. */
 export const MAX_RESOURCE_KEY = 64;
 
 const HEX_COLOUR = /^#[0-9a-f]{6}$/;
 const DIRECTIONS: readonly unknown[] = ['drains', 'fills', 'static'];
-const CONTROL = /\p{Cc}/u;
 
 /** A resource of the player's own character, by name: what its bar shows, as a number too. */
 export interface SheetResource {
@@ -45,7 +45,7 @@ export interface BookResourceMessage {
 const isValue = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= MAX_TOKEN_VALUE;
 
 /** A key a resource may be named by: a string of 1 to `MAX_RESOURCE_KEY` characters, none of them a control character. */
-export const isResourceKey = (value: unknown): value is string => typeof value === 'string' && value.length > 0 && value.length <= MAX_RESOURCE_KEY && !CONTROL.test(value);
+export const isResourceKey = (value: unknown): value is string => isPlainKey(value, MAX_RESOURCE_KEY);
 
 /** A static value may be 0 (an armour class); a counting one needs a maximum above 0. */
 const holdsValue = (direction: unknown, max: number): boolean => (direction === 'static' ? max >= 0 : max > 0);

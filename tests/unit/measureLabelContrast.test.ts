@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Bounds, Graphics, Text, type FillInstruction } from 'pixi.js';
 import { contrast } from '../../src/app/pixi/lighting/lightMarker';
